@@ -1,0 +1,29 @@
+services:
+  # 数据库服务
+  db:
+    image: postgres:16-alpine
+    container_name: time-ledger-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: time_ledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 数据库 Web 管理界面 (可选，强烈建议保留)
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: time-ledger-pgweb
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - PGWEB_DATABASE_URL=postgres://postgres:postgres@db:5432/time_ledger?sslmode=disable
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
