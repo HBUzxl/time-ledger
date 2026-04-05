@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - schema: "internal/db/schema"
+    queries: "internal/db/queries"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "db" # 生成的 Go 代码所在的包名
+        out: "internal/db/models"
+        emit_json_tags: true # 生成 JSON 标签，方便序列化
+        emit_prepared_queries: false # 生成预编译查询方法
+        emit_interface: false # 生成接口定义，用于mock测试
