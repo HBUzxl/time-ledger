@@ -16,7 +16,7 @@ CREATE TABLE time_records (
 
     -- 约束：结束时间必须大于开始时间
     CONSTRAINT chk_time CHECK (end_time > start_time)
-)
+);
 
 CREATE INDEX idx_records_user ON time_records(user_id, start_time, end_time);
 CREATE INDEX idx_records_category ON time_records(category_id);
