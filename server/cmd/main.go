@@ -11,6 +11,8 @@ import (
 	"time-ledger/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 func main() {
@@ -24,10 +26,16 @@ func main() {
 	dbConn, err := db.NewDB(context.Background(), config)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		log.Print("数据库连接成功")
 	}
+	log.Print("数据库连接成功")
 	defer dbConn.Close()
+
+	// 执行数据库迁移
+	dbStdlib := stdlib.OpenDBFromPool(dbConn.Pool)
+	if err := goose.Up(dbStdlib, "sql/migrations"); err != nil {
+		log.Fatalf("database migration failed: %v", err)
+	}
+	log.Print("database migration completed")
 
 	// 初始化 store
 	queries := store.New(dbConn.Pool)
