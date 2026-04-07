@@ -7,7 +7,8 @@ package store
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createCategory = `-- name: CreateCategory :one
@@ -17,14 +18,14 @@ RETURNING id, user_id, parent_id, name, color_code, is_active, sort_order, creat
 `
 
 type CreateCategoryParams struct {
-	UserID    int32         `json:"user_id"`
-	ParentID  sql.NullInt32 `json:"parent_id"`
-	Name      string        `json:"name"`
-	ColorCode string        `json:"color_code"`
+	UserID    int32       `json:"user_id"`
+	ParentID  pgtype.Int4 `json:"parent_id"`
+	Name      string      `json:"name"`
+	ColorCode string      `json:"color_code"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory,
+	row := q.db.QueryRow(ctx, createCategory,
 		arg.UserID,
 		arg.ParentID,
 		arg.Name,
@@ -51,7 +52,7 @@ WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetCategoryById(ctx context.Context, id int32) (Category, error) {
-	row := q.db.QueryRowContext(ctx, getCategoryById, id)
+	row := q.db.QueryRow(ctx, getCategoryById, id)
 	var i Category
 	err := row.Scan(
 		&i.ID,
@@ -74,7 +75,7 @@ ORDER BY sort_order ASC
 `
 
 func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, listCategoriesByUserId, userID)
+	rows, err := q.db.Query(ctx, listCategoriesByUserId, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +97,6 @@ func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]C
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

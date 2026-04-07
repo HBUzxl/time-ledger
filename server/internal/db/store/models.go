@@ -5,60 +5,59 @@
 package store
 
 import (
-	"database/sql"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Category struct {
-	ID        int32         `json:"id"`
-	UserID    int32         `json:"user_id"`
-	ParentID  sql.NullInt32 `json:"parent_id"`
-	Name      string        `json:"name"`
-	ColorCode string        `json:"color_code"`
-	IsActive  bool          `json:"is_active"`
-	SortOrder int32         `json:"sort_order"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID        int32              `json:"id"`
+	UserID    int32              `json:"user_id"`
+	ParentID  pgtype.Int4        `json:"parent_id"`
+	Name      string             `json:"name"`
+	ColorCode string             `json:"color_code"`
+	IsActive  bool               `json:"is_active"`
+	SortOrder int32              `json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type RawMessage struct {
-	ID           int32         `json:"id"`
-	UserID       int32         `json:"user_id"`
-	MessageText  string        `json:"message_text"`
-	TimeRecordID sql.NullInt32 `json:"time_record_id"`
-	Processed    bool          `json:"processed"`
-	ProcessedAt  sql.NullTime  `json:"processed_at"`
-	CreatedAt    time.Time     `json:"created_at"`
-	UpdatedAt    time.Time     `json:"updated_at"`
+	ID           int32              `json:"id"`
+	UserID       int32              `json:"user_id"`
+	MessageText  string             `json:"message_text"`
+	TimeRecordID pgtype.Int4        `json:"time_record_id"`
+	Processed    bool               `json:"processed"`
+	ProcessedAt  pgtype.Timestamptz `json:"processed_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type StatisticsConfig struct {
-	ID          int32     `json:"id"`
-	UserID      int32     `json:"user_id"`
-	ConfigName  string    `json:"config_name"`
-	CategoryIds []int32   `json:"category_ids"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          int32              `json:"id"`
+	UserID      int32              `json:"user_id"`
+	ConfigName  string             `json:"config_name"`
+	CategoryIds []int32            `json:"category_ids"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type TimeRecord struct {
-	ID              int32          `json:"id"`
-	UserID          int32          `json:"user_id"`
-	CategoryID      sql.NullInt32  `json:"category_id"`
-	StartTime       time.Time      `json:"start_time"`
-	EndTime         time.Time      `json:"end_time"`
-	DurationMinutes int32          `json:"duration_minutes"`
-	Note            sql.NullString `json:"note"`
-	Source          string         `json:"source"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID              int32              `json:"id"`
+	UserID          int32              `json:"user_id"`
+	CategoryID      pgtype.Int4        `json:"category_id"`
+	StartTime       pgtype.Timestamptz `json:"start_time"`
+	EndTime         pgtype.Timestamptz `json:"end_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Note            pgtype.Text        `json:"note"`
+	Source          string             `json:"source"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {
-	ID           int32     `json:"id"`
-	Email        string    `json:"email"`
-	Username     string    `json:"username"`
-	PasswordHash string    `json:"password_hash"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           int32              `json:"id"`
+	Email        string             `json:"email"`
+	Username     string             `json:"username"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }

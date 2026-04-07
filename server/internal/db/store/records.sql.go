@@ -7,8 +7,8 @@ package store
 
 import (
 	"context"
-	"database/sql"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const checkOverlap = `-- name: CheckOverlap :one
@@ -27,7 +27,7 @@ type CheckOverlapParams struct {
 
 // 检查时间是否重叠
 func (q *Queries) CheckOverlap(ctx context.Context, arg CheckOverlapParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, checkOverlap, arg.UserID, arg.Overlaps, arg.Overlaps_2)
+	row := q.db.QueryRow(ctx, checkOverlap, arg.UserID, arg.Overlaps, arg.Overlaps_2)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -42,17 +42,17 @@ INSERT INTO time_records (
 `
 
 type CreateRecordParams struct {
-	UserID          int32          `json:"user_id"`
-	CategoryID      sql.NullInt32  `json:"category_id"`
-	StartTime       time.Time      `json:"start_time"`
-	EndTime         time.Time      `json:"end_time"`
-	DurationMinutes int32          `json:"duration_minutes"`
-	Note            sql.NullString `json:"note"`
-	Source          string         `json:"source"`
+	UserID          int32              `json:"user_id"`
+	CategoryID      pgtype.Int4        `json:"category_id"`
+	StartTime       pgtype.Timestamptz `json:"start_time"`
+	EndTime         pgtype.Timestamptz `json:"end_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Note            pgtype.Text        `json:"note"`
+	Source          string             `json:"source"`
 }
 
 func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (TimeRecord, error) {
-	row := q.db.QueryRowContext(ctx, createRecord,
+	row := q.db.QueryRow(ctx, createRecord,
 		arg.UserID,
 		arg.CategoryID,
 		arg.StartTime,
@@ -86,14 +86,14 @@ ORDER BY start_time ASC
 `
 
 type GetDailyRecordsParams struct {
-	UserID      int32     `json:"user_id"`
-	StartTime   time.Time `json:"start_time"`
-	StartTime_2 time.Time `json:"start_time_2"`
+	UserID      int32              `json:"user_id"`
+	StartTime   pgtype.Timestamptz `json:"start_time"`
+	StartTime_2 pgtype.Timestamptz `json:"start_time_2"`
 }
 
 // 获取用户在指定日期范围内的时间记录
 func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams) ([]TimeRecord, error) {
-	rows, err := q.db.QueryContext(ctx, getDailyRecords, arg.UserID, arg.StartTime, arg.StartTime_2)
+	rows, err := q.db.Query(ctx, getDailyRecords, arg.UserID, arg.StartTime, arg.StartTime_2)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +116,6 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

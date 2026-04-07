@@ -21,7 +21,7 @@ type CreateRawMessageParams struct {
 }
 
 func (q *Queries) CreateRawMessage(ctx context.Context, arg CreateRawMessageParams) (RawMessage, error) {
-	row := q.db.QueryRowContext(ctx, createRawMessage, arg.UserID, arg.MessageText)
+	row := q.db.QueryRow(ctx, createRawMessage, arg.UserID, arg.MessageText)
 	var i RawMessage
 	err := row.Scan(
 		&i.ID,
