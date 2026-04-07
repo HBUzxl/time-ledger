@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: raw_messages.sql
 
-package db
+package store
 
 import (
 	"context"
