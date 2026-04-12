@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"time-ledger/internal/config"
 	"time-ledger/internal/db"
 	"time-ledger/internal/db/store"
@@ -44,16 +43,7 @@ func main() {
 	categoryService := service.NewCategoryService(queries)
 
 	r := gin.Default()
-
-	r.GET("/health", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
-	})
-
-	// 注册 API v1 路由
-	v1 := r.Group("/api/v1")
-	handler.RegisterRoutes(v1, categoryService)
+	handler.Setup(r, categoryService)
 
 	r.Run(":" + config.ServerPort)
 }
