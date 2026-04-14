@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,10 +24,10 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 // GenerateJWT 生成访问令牌和刷新令牌
-func GenerateJWT(userID int32, secretKey string) (at string, rt string, err error) {
+func GenerateJWT(userUUID uuid.UUID, secretKey string) (at string, rt string, err error) {
 	// Access Token, 有效期15分钟
 	atClaims := jwt.MapClaims{
-		"sub": userID,
+		"sub": userUUID.String(),
 		"exp": time.Now().Add(15 * time.Minute).Unix(),
 	}
 	atToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims).SignedString([]byte(secretKey))
@@ -36,7 +37,7 @@ func GenerateJWT(userID int32, secretKey string) (at string, rt string, err erro
 
 	// Refresh Token, 有效期7天
 	rtClaims := jwt.MapClaims{
-		"sub": userID,
+		"sub": userUUID.String(),
 		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	rtToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims).SignedString([]byte(secretKey))

@@ -28,7 +28,7 @@ type RegisterRequest struct {
 }
 
 type UserResponse struct {
-	ID          int32  `json:"id"`
+	UUID        string `json:"uuid"`
 	Username    string `json:"username"`
 	AccessToken string `json:"access_token"`
 }
@@ -63,20 +63,20 @@ func (s *UserService) Register(ctx context.Context, req *RegisterRequest) (*User
 	}
 
 	// 4. 生成 JWT 令牌
-	at, rt, err := util.GenerateJWT(user.ID, s.jwtSecret)
+	at, rt, err := util.GenerateJWT(user.UUID, s.jwtSecret)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// 5. 将 Refresh Token存储在 Redis 中，设置过期时间为7天
-	key := fmt.Sprintf("refresh_token:%d", user.ID)
+	key := fmt.Sprintf("refresh_token:%s", user.UUID.String())
 	err = s.redis.Set(ctx, key, rt, 7*24*time.Hour).Err()
 	if err != nil {
 		return nil, "", err
 	}
 
 	return &UserResponse{
-		ID:          user.ID,
+		UUID:        user.UUID.String(),
 		Username:    user.Username,
 		AccessToken: at,
 	}, rt, nil
@@ -97,21 +97,21 @@ func (s *UserService) Login(ctx context.Context, req *LoginRequest) (*UserRespon
 	}
 
 	// 3. 生成 JWT 令牌
-	at, rt, err := util.GenerateJWT(user.ID, s.jwtSecret)
+	at, rt, err := util.GenerateJWT(user.UUID, s.jwtSecret)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// 4. 更新 Redis 中的 Refresh Token
 	// 注意，如果是单端登录，直接覆盖；如果是多端登录，可以使用 List 存储多个 Refresh Token
-	key := fmt.Sprintf("refresh_token:%d", user.ID)
+	key := fmt.Sprintf("refresh_token:%s", user.UUID.String())
 	err = s.redis.Set(ctx, key, rt, 7*24*time.Hour).Err()
 	if err != nil {
 		return nil, "", err
 	}
 
 	return &UserResponse{
-		ID:          user.ID,
+		UUID:        user.UUID.String(),
 		Username:    user.Username,
 		AccessToken: at,
 	}, rt, nil

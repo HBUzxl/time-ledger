@@ -64,7 +64,7 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 	var i TimeRecord
 	err := row.Scan(
 		&i.ID,
-		&i.Uuid,
+		&i.UUID,
 		&i.UserID,
 		&i.CategoryID,
 		&i.StartTime,
@@ -104,7 +104,7 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 		var i TimeRecord
 		if err := rows.Scan(
 			&i.ID,
-			&i.Uuid,
+			&i.UUID,
 			&i.UserID,
 			&i.CategoryID,
 			&i.StartTime,

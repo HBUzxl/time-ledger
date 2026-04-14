@@ -5,12 +5,13 @@
 package store
 
 import (
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Category struct {
 	ID        int32              `json:"id"`
-	Uuid      pgtype.UUID        `json:"uuid"`
+	UUID      uuid.UUID          `json:"uuid"`
 	UserID    int32              `json:"user_id"`
 	ParentID  pgtype.Int4        `json:"parent_id"`
 	Name      string             `json:"name"`
@@ -43,7 +44,7 @@ type StatisticsConfig struct {
 
 type TimeRecord struct {
 	ID              int32              `json:"id"`
-	Uuid            pgtype.UUID        `json:"uuid"`
+	UUID            uuid.UUID          `json:"uuid"`
 	UserID          int32              `json:"user_id"`
 	CategoryID      pgtype.Int4        `json:"category_id"`
 	StartTime       pgtype.Timestamptz `json:"start_time"`
@@ -57,7 +58,7 @@ type TimeRecord struct {
 
 type User struct {
 	ID           int32              `json:"id"`
-	Uuid         pgtype.UUID        `json:"uuid"`
+	UUID         uuid.UUID          `json:"uuid"`
 	Email        string             `json:"email"`
 	Username     string             `json:"username"`
 	PasswordHash string             `json:"password_hash"`

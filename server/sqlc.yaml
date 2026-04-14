@@ -11,3 +11,8 @@ sql:
         emit_prepared_queries: false # 生成预编译查询方法
         emit_interface: false # 生成接口定义，用于mock测试
         sql_package: "pgx/v5" # 生成的 SQL 包名
+        rename:
+          uuid: "UUID"
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"

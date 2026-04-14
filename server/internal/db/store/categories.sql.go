@@ -34,7 +34,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	var i Category
 	err := row.Scan(
 		&i.ID,
-		&i.Uuid,
+		&i.UUID,
 		&i.UserID,
 		&i.ParentID,
 		&i.Name,
@@ -57,7 +57,7 @@ func (q *Queries) GetCategoryById(ctx context.Context, id int32) (Category, erro
 	var i Category
 	err := row.Scan(
 		&i.ID,
-		&i.Uuid,
+		&i.UUID,
 		&i.UserID,
 		&i.ParentID,
 		&i.Name,
@@ -87,7 +87,7 @@ func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]C
 		var i Category
 		if err := rows.Scan(
 			&i.ID,
-			&i.Uuid,
+			&i.UUID,
 			&i.UserID,
 			&i.ParentID,
 			&i.Name,

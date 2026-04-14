@@ -8,13 +8,14 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, password_hash)
 VALUES ($1, $2, $3)
-RETURNING id, username, email, created_at
+RETURNING uuid, username, email, created_at
 `
 
 type CreateUserParams struct {
@@ -24,7 +25,7 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID        int32              `json:"id"`
+	UUID      uuid.UUID          `json:"uuid"`
 	Username  string             `json:"username"`
 	Email     string             `json:"email"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
@@ -34,7 +35,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
 	var i CreateUserRow
 	err := row.Scan(
-		&i.ID,
+		&i.UUID,
 		&i.Username,
 		&i.Email,
 		&i.CreatedAt,
@@ -52,7 +53,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Uuid,
+		&i.UUID,
 		&i.Email,
 		&i.Username,
 		&i.PasswordHash,
