@@ -38,7 +38,7 @@ INSERT INTO time_records (
     user_id, category_id, start_time, end_time, duration_minutes, note, source
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at
+) RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at
 `
 
 type CreateRecordParams struct {
@@ -64,6 +64,7 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 	var i TimeRecord
 	err := row.Scan(
 		&i.ID,
+		&i.Uuid,
 		&i.UserID,
 		&i.CategoryID,
 		&i.StartTime,
@@ -78,7 +79,7 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 }
 
 const getDailyRecords = `-- name: GetDailyRecords :many
-SELECT id, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at FROM time_records
+SELECT id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at FROM time_records
 WHERE user_id = $1 
 AND start_time >= $2 
 AND start_time < $3
@@ -103,6 +104,7 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 		var i TimeRecord
 		if err := rows.Scan(
 			&i.ID,
+			&i.Uuid,
 			&i.UserID,
 			&i.CategoryID,
 			&i.StartTime,

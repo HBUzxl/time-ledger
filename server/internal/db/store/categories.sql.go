@@ -14,7 +14,7 @@ import (
 const createCategory = `-- name: CreateCategory :one
 INSERT INTO categories (user_id, parent_id, name, color_code)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
+RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
 `
 
 type CreateCategoryParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	var i Category
 	err := row.Scan(
 		&i.ID,
+		&i.Uuid,
 		&i.UserID,
 		&i.ParentID,
 		&i.Name,
@@ -47,7 +48,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 }
 
 const getCategoryById = `-- name: GetCategoryById :one
-SELECT id, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
 WHERE id = $1 LIMIT 1
 `
 
@@ -56,6 +57,7 @@ func (q *Queries) GetCategoryById(ctx context.Context, id int32) (Category, erro
 	var i Category
 	err := row.Scan(
 		&i.ID,
+		&i.Uuid,
 		&i.UserID,
 		&i.ParentID,
 		&i.Name,
@@ -69,7 +71,7 @@ func (q *Queries) GetCategoryById(ctx context.Context, id int32) (Category, erro
 }
 
 const listCategoriesByUserId = `-- name: ListCategoriesByUserId :many
-SELECT id, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
 WHERE user_id = $1 AND is_active = TRUE
 ORDER BY sort_order ASC
 `
@@ -85,6 +87,7 @@ func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]C
 		var i Category
 		if err := rows.Scan(
 			&i.ID,
+			&i.Uuid,
 			&i.UserID,
 			&i.ParentID,
 			&i.Name,
