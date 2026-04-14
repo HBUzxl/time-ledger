@@ -36,7 +36,7 @@ func (h *UserHandler) Register(ctx *gin.Context) {
 		"refresh_token",
 		refreshToken,
 		7*24*3600, // 7天
-		"/",
+		"/api/v1/auth",
 		"",    // domain
 		false, // secure(https only)
 		true,  // httpOnly(不允许 JS 访问, 防止 XSS 攻击)
@@ -66,6 +66,38 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 	ctx.SetCookie(
 		"refresh_token",
 		refreshToken,
+		7*24*3600,      // 7天
+		"/api/v1/auth", // 只在认证相关的路径下发送，增加安全性
+		"",             // domain
+		false,          // secure(https only)
+		true,           // httpOnly(不允许 JS 访问, 防止 XSS 攻击)
+	)
+
+	ctx.JSON(http.StatusOK, resp)
+}
+
+// RefreshToken 刷新 Access Token
+func (h *UserHandler) RefreshToken(ctx *gin.Context) {
+	// 1. 从 Cookie 中获取 Refresh Token
+	oldRefreshToken, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "refresh token not found",
+		})
+		return
+	}
+
+	resp, newRefreshToken, err := h.service.RefreshToken(ctx.Request.Context(), oldRefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ctx.SetCookie(
+		"refresh_token",
+		newRefreshToken,
 		7*24*3600,      // 7天
 		"/api/v1/auth", // 只在认证相关的路径下发送，增加安全性
 		"",             // domain

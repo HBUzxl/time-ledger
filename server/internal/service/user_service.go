@@ -8,6 +8,7 @@ import (
 	"time-ledger/internal/db/store"
 	"time-ledger/internal/util"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -116,4 +117,62 @@ func (s *UserService) Login(ctx context.Context, req *LoginRequest) (*UserRespon
 		AccessToken: at,
 	}, rt, nil
 
+}
+
+// RefreshToken 刷新 Access Token
+func (s *UserService) RefreshToken(ctx context.Context, refreshToken string) (*UserResponse, string, error) {
+
+	// 1. 解析 Refresh Token
+	claims, err := util.ParseJWT(refreshToken, s.jwtSecret)
+	if err != nil {
+		return nil, "", errors.New("invalid refresh token")
+	}
+
+	userUUID, ok := claims["sub"].(string)
+	if !ok {
+		return nil, "", errors.New("invalid refresh token")
+	}
+
+	parsedUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return nil, "", errors.New("invalid user UUID in token")
+	}
+
+	// 2. 从 Redis 中获取存储的 Refresh Token
+	key := fmt.Sprintf("refresh_token:%s", userUUID)
+	storedRT, err := s.redis.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil, "", errors.New("refresh token not found")
+	}
+	if err != nil {
+		return nil, "", errors.New("failed to get refresh token")
+	}
+	if storedRT != refreshToken {
+		s.redis.Del(ctx, key)
+		return nil, "", errors.New("refresh token mismatch")
+	}
+
+	// 3. 生成新的 Access Token 和 Refresh Token
+	newAT, newRT, err := util.GenerateJWT(parsedUUID, s.jwtSecret)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 4. 更新 Redis 中的 Refresh Token
+	err = s.redis.Set(ctx, key, newRT, 7*24*time.Hour).Err()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 5. 获取用户名
+	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return &UserResponse{
+		UUID:        userUUID,
+		Username:    user.Username,
+		AccessToken: newAT,
+	}, newRT, nil
 }

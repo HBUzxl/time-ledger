@@ -31,6 +31,7 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 	{
 		auth.POST("/register", userHandler.Register)
 		auth.POST("/login", userHandler.Login)
+		auth.POST("/refresh", userHandler.RefreshToken)
 	}
 
 	categories := r.Group("/categories")

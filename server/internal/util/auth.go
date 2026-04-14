@@ -47,3 +47,25 @@ func GenerateJWT(userUUID uuid.UUID, secretKey string) (at string, rt string, er
 
 	return atToken, rtToken, nil
 }
+
+// ParseJWT 解析验证 JWT 令牌
+func ParseJWT(tokenStr string, secretKey string) (jwt.MapClaims, error) {
+	// 解析 JWT 令牌
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		// 验证签名算法是否为 HMAC
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		// 返回用于验证签名的密钥
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 验证令牌是否有效，并提取 Claims
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, jwt.ErrInvalidKey
+}

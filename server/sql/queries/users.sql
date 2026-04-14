@@ -6,3 +6,7 @@ RETURNING uuid, username, email, created_at;
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = $1 LIMIT 1;
+
+-- name: GetUserByUUID :one
+SELECT * FROM users
+WHERE uuid = $1 LIMIT 1;
