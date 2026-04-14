@@ -47,13 +47,13 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return i, err
 }
 
-const getCategoryById = `-- name: GetCategoryById :one
+const getCategoryByID = `-- name: GetCategoryByID :one
 SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetCategoryById(ctx context.Context, id int32) (Category, error) {
-	row := q.db.QueryRow(ctx, getCategoryById, id)
+func (q *Queries) GetCategoryByID(ctx context.Context, id int32) (Category, error) {
+	row := q.db.QueryRow(ctx, getCategoryByID, id)
 	var i Category
 	err := row.Scan(
 		&i.ID,

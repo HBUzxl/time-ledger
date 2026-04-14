@@ -46,9 +46,10 @@ func main() {
 	// 初始化 services
 	categoryService := service.NewCategoryService(queries)
 	userService := service.NewUserService(queries, config.JWTSecret, rdb)
+	recordService := service.NewRecordService(queries)
 
 	r := gin.Default()
-	handler.Setup(r, categoryService, userService, config.JWTSecret)
+	handler.Setup(r, categoryService, userService, recordService, config.JWTSecret)
 
 	r.Run(":" + config.ServerPort)
 }

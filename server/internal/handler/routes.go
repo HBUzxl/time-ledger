@@ -9,7 +9,7 @@ import (
 )
 
 // Setup 注册所有路由
-func Setup(r *gin.Engine, categoryService *service.CategoryService, userService *service.UserService, jwtSecret string) {
+func Setup(r *gin.Engine, categoryService *service.CategoryService, userService *service.UserService, recordService *service.RecordService, jwtSecret string) {
 	// 健康检查
 	r.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{
@@ -19,13 +19,14 @@ func Setup(r *gin.Engine, categoryService *service.CategoryService, userService 
 
 	// 注册 API v1 路由
 	v1 := r.Group("/api/v1")
-	registerV1Routes(v1, categoryService, userService, jwtSecret)
+	registerV1Routes(v1, categoryService, userService, recordService, jwtSecret)
 }
 
 // registerV1Routes 注册 v1 版本 API 路由
-func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryService, userService *service.UserService, jwtSecret string) {
+func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryService, userService *service.UserService, recordService *service.RecordService, jwtSecret string) {
 	categoryHandler := NewCategoryHandler(categoryService)
 	userHandler := NewUserHandler(userService)
+	recordHandler := NewRecordHandler(recordService)
 
 	// 认证模块
 	auth := r.Group("/auth")
@@ -39,6 +40,12 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 	{
 		categories.Use(middleware.AuthMiddleware(jwtSecret))
 		categories.GET("", categoryHandler.ListCategories)
+	}
+
+	records := r.Group("/records")
+	{
+		records.Use(middleware.AuthMiddleware(jwtSecret))
+		records.POST("", recordHandler.CreateRecord)
 	}
 
 	// users := r.Group("/users")

@@ -16,7 +16,7 @@ func NewCategoryService(store *store.Queries) *CategoryService {
 	return &CategoryService{store: store}
 }
 
-// ListCategoriesByUserID retrieves all active categories for a given user
+// ListCategoriesByUserID 根据用户 ID 获取分类列表
 func (s *CategoryService) ListCategoriesByUserID(ctx context.Context, userID int32) ([]store.Category, error) {
 	categories, err := s.store.ListCategoriesByUserId(ctx, userID)
 	if err != nil {
