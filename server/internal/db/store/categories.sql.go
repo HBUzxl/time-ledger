@@ -8,12 +8,13 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (user_id, parent_id, name, color_code)
-VALUES ($1, $2, $3, $4)
+INSERT INTO categories (user_id, parent_id, name, color_code, sort_order)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
 `
 
@@ -22,6 +23,7 @@ type CreateCategoryParams struct {
 	ParentID  pgtype.Int4 `json:"parent_id"`
 	Name      string      `json:"name"`
 	ColorCode string      `json:"color_code"`
+	SortOrder int32       `json:"sort_order"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
@@ -30,6 +32,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		arg.ParentID,
 		arg.Name,
 		arg.ColorCode,
+		arg.SortOrder,
 	)
 	var i Category
 	err := row.Scan(
@@ -54,6 +57,29 @@ WHERE id = $1 LIMIT 1
 
 func (q *Queries) GetCategoryByID(ctx context.Context, id int32) (Category, error) {
 	row := q.db.QueryRow(ctx, getCategoryByID, id)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.UUID,
+		&i.UserID,
+		&i.ParentID,
+		&i.Name,
+		&i.ColorCode,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCategoryByUUID = `-- name: GetCategoryByUUID :one
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
+WHERE uuid = $1 LIMIT 1
+`
+
+func (q *Queries) GetCategoryByUUID(ctx context.Context, argUuid uuid.UUID) (Category, error) {
+	row := q.db.QueryRow(ctx, getCategoryByUUID, argUuid)
 	var i Category
 	err := row.Scan(
 		&i.ID,
