@@ -44,3 +44,34 @@ func (h *UserHandler) Register(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, resp)
 }
+
+// Login 用户登录
+func (h *UserHandler) Login(ctx *gin.Context) {
+	var req service.LoginRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	resp, refreshToken, err := h.service.Login(ctx.Request.Context(), &req)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ctx.SetCookie(
+		"refresh_token",
+		refreshToken,
+		7*24*3600,      // 7天
+		"/api/v1/auth", // 只在认证相关的路径下发送，增加安全性
+		"",             // domain
+		false,          // secure(https only)
+		true,           // httpOnly(不允许 JS 访问, 防止 XSS 攻击)
+	)
+
+	ctx.JSON(http.StatusOK, resp)
+}

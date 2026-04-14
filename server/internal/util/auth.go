@@ -16,6 +16,12 @@ func HashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
+// CheckPasswordHash 验证密码
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 // GenerateJWT 生成访问令牌和刷新令牌
 func GenerateJWT(userID int32, secretKey string) (at string, rt string, err error) {
 	// Access Token, 有效期15分钟

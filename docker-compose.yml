@@ -23,6 +23,16 @@ services:
     volumes:
       - redis_data:/data
 
+  # Redis 可视化管理界面 (可选)
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    restart: always
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
   # 数据库 Web 管理界面 (可选，强烈建议保留)
   pgweb:
     image: sosedoff/pgweb

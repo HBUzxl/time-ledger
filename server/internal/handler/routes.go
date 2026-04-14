@@ -26,13 +26,20 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 	categoryHandler := NewCategoryHandler(categoryService)
 	userHandler := NewUserHandler(userService)
 
+	// 认证模块
+	auth := r.Group("/auth")
+	{
+		auth.POST("/register", userHandler.Register)
+		auth.POST("/login", userHandler.Login)
+	}
+
 	categories := r.Group("/categories")
 	{
 		categories.GET("", categoryHandler.ListCategories)
 	}
 
-	users := r.Group("/users")
-	{
-		users.POST("/register", userHandler.Register)
-	}
+	// users := r.Group("/users")
+	// {
+	// 	users.POST("/register", userHandler.Register)
+	// }
 }
