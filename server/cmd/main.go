@@ -29,6 +29,10 @@ func main() {
 	log.Print("数据库连接成功")
 	defer dbConn.Close()
 
+	// 初始化 Redis
+	rdb := db.NewRedis(context.Background(), config)
+	defer rdb.Close()
+
 	// 执行数据库迁移
 	dbStdlib := stdlib.OpenDBFromPool(dbConn.Pool)
 	if err := goose.Up(dbStdlib, "sql/migrations"); err != nil {
@@ -41,9 +45,10 @@ func main() {
 
 	// 初始化 services
 	categoryService := service.NewCategoryService(queries)
+	userService := service.NewUserService(queries, config.JWTSecret, rdb)
 
 	r := gin.Default()
-	handler.Setup(r, categoryService)
+	handler.Setup(r, categoryService, userService)
 
 	r.Run(":" + config.ServerPort)
 }

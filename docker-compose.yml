@@ -12,6 +12,16 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  
+  # Redis 服务
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   # 数据库 Web 管理界面 (可选，强烈建议保留)
   pgweb:
@@ -41,8 +51,13 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=time_ledger
       - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
     depends_on:
       - db
+      - redis
 
 volumes:
   postgres_data:
+  redis_data:
