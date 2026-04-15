@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"time-ledger/internal/db/store"
 	"time-ledger/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,18 +13,6 @@ type CategoryHandler struct {
 
 func NewCategoryHandler(service *service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{service: service}
-}
-
-// categoryResponse excludes ID and UserID from the response
-type categoryResponse struct {
-	UUID      string `json:"uuid"`
-	ParentID  any    `json:"parent_id,omitempty"`
-	Name      string `json:"name"`
-	ColorCode string `json:"color_code"`
-	IsActive  bool   `json:"is_active"`
-	SortOrder int32  `json:"sort_order"`
-	CreatedAt any    `json:"created_at"`
-	UpdatedAt any    `json:"updated_at"`
 }
 
 // ListCategories handles
@@ -47,9 +34,9 @@ func (h *CategoryHandler) ListCategories(ctx *gin.Context) {
 		return
 	}
 
-	respCategories := make([]categoryResponse, len(categories))
+	respCategories := make([]service.CategoryResponse, len(categories))
 	for i, c := range categories {
-		respCategories[i] = toCategoryResponse(c)
+		respCategories[i] = service.ToCategoryResponse(c)
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
@@ -85,25 +72,6 @@ func (h *CategoryHandler) CreateCategory(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"data": toCategoryResponse(*category),
+		"data": category,
 	})
-}
-
-// toCategoryResponse converts a Category to a response excluding ID and UserID
-func toCategoryResponse(c store.Category) categoryResponse {
-	resp := categoryResponse{
-		UUID:      c.UUID.String(),
-		Name:      c.Name,
-		ColorCode: c.ColorCode,
-		IsActive:  c.IsActive,
-		SortOrder: c.SortOrder,
-		CreatedAt: c.CreatedAt.Time,
-		UpdatedAt: c.UpdatedAt.Time,
-	}
-	
-	if c.ParentID.Valid {
-		resp.ParentID = c.ParentID.Int32
-	}
-	
-	return resp
 }

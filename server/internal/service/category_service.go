@@ -18,6 +18,38 @@ func NewCategoryService(store *store.Queries) *CategoryService {
 	return &CategoryService{store: store}
 }
 
+// CategoryResponse 分类响应DTO（隐藏内部ID，使用UUID）
+type CategoryResponse struct {
+	UUID      string `json:"uuid"`
+	ParentID  *int32 `json:"parent_id,omitempty"` // 使用指针，nil时omitempty会隐藏
+	Name      string `json:"name"`
+	ColorCode string `json:"color_code"`
+	IsActive  bool   `json:"is_active"`
+	SortOrder int32  `json:"sort_order"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// ToCategoryResponse 将数据库模型转换为响应DTO
+func ToCategoryResponse(c store.Category) CategoryResponse {
+	resp := CategoryResponse{
+		UUID:      c.UUID.String(),
+		Name:      c.Name,
+		ColorCode: c.ColorCode,
+		IsActive:  c.IsActive,
+		SortOrder: c.SortOrder,
+		CreatedAt: c.CreatedAt.Time.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt: c.UpdatedAt.Time.Format("2006-01-02T15:04:05Z"),
+	}
+
+	if c.ParentID.Valid {
+		parentID := c.ParentID.Int32
+		resp.ParentID = &parentID
+	}
+
+	return resp
+}
+
 type CreateCategoryRequest struct {
 	ParentUUID *uuid.UUID `json:"parent_id"` // 可选，默认为 nil
 	Name       string     `json:"name" binding:"required"`
@@ -53,14 +85,14 @@ func (s *CategoryService) ListCategoriesByUserUUID(ctx context.Context, userUUID
 }
 
 // CreateCategory 创建分类
-func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, req CreateCategoryRequest) (*store.Category, error) {
+func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, req CreateCategoryRequest) (CategoryResponse, error) {
 	parsedUUID, err := uuid.Parse(userUUID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user UUID")
+		return CategoryResponse{}, fmt.Errorf("invalid user UUID")
 	}
 	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
 	if err != nil {
-		return nil, fmt.Errorf("get user failed")
+		return CategoryResponse{}, fmt.Errorf("get user failed")
 	}
 	userID := user.ID
 
@@ -70,19 +102,19 @@ func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, r
 	if req.ParentUUID != nil {
 		parentCategory, err := s.store.GetCategoryByUUID(ctx, *req.ParentUUID)
 		if err != nil {
-			return nil, fmt.Errorf("parent category not found")
+			return CategoryResponse{}, fmt.Errorf("parent category not found")
 		}
 
 		parentID = pgtype.Int4{Int32: parentCategory.ID, Valid: true}
 
 		// 验证父分类是否属于当前用户
 		if parentCategory.UserID != userID {
-			return nil, errors.New("unauthorized parent category")
+			return CategoryResponse{}, errors.New("unauthorized parent category")
 		}
 
 		// 验证父分类不能是一个子分类
 		if parentCategory.ParentID.Valid {
-			return nil, errors.New("cannot set a subcategory as parent")
+			return CategoryResponse{}, errors.New("cannot set a subcategory as parent")
 		}
 	}
 
@@ -94,8 +126,8 @@ func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, r
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create category failed: %w", err)
+		return CategoryResponse{}, fmt.Errorf("create category failed: %w", err)
 	}
 
-	return &category, nil
+	return ToCategoryResponse(category), nil
 }
