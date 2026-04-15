@@ -123,3 +123,44 @@ func (h *CategoryHandler) UpdateCategory(ctx *gin.Context) {
 		"data": category,
 	})
 }
+
+// DeleteCategory 删除分类
+// DELETE /api/v1/categories/:uuid
+func (h *CategoryHandler) DeleteCategory(ctx *gin.Context) {
+	categoryUUID := ctx.Param("uuid")
+	if categoryUUID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "category uuid is required",
+		})
+		return
+	}
+
+	userUUID, exists := ctx.Get("user_uuid")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "user not authenticated",
+		})
+		return
+	}
+
+	err := h.service.DeleteCategory(ctx.Request.Context(), userUUID.(string), categoryUUID)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		errorMsg := "failed to delete category"
+		
+		if err.Error() == "category not found" || err.Error() == "unauthorized category" {
+			statusCode = http.StatusNotFound
+			errorMsg = err.Error()
+		} else if err.Error() == "cannot delete category with subcategories" {
+			statusCode = http.StatusBadRequest
+			errorMsg = err.Error()
+		}
+		
+		ctx.JSON(statusCode, gin.H{
+			"error": errorMsg,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, nil)
+}

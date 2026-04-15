@@ -42,6 +42,7 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 		categories.GET("", categoryHandler.ListCategories)
 		categories.POST("", categoryHandler.CreateCategory)
 		categories.PUT("/:uuid", categoryHandler.UpdateCategory)
+		categories.DELETE("/:uuid", categoryHandler.DeleteCategory)
 	}
 
 	records := r.Group("/records")

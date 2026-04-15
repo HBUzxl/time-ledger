@@ -1,0 +1,18 @@
+info:
+  name: 删除分类-有子分类失败
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{localhost}}/api/v1/categories/d07624cd-09ec-44a7-8466-8189a67c7ccf"
+  headers:
+    - name: Authorization
+      value: "{{token}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

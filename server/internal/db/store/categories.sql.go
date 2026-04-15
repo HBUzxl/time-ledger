@@ -12,10 +12,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSubCategories = `-- name: CountSubCategories :one
+SELECT COUNT(*) FROM categories
+WHERE parent_id = $1
+  AND user_id = $2
+  AND deleted_at IS NULL
+`
+
+type CountSubCategoriesParams struct {
+	ParentID pgtype.Int4 `json:"parent_id"`
+	UserID   int32       `json:"user_id"`
+}
+
+func (q *Queries) CountSubCategories(ctx context.Context, arg CountSubCategoriesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSubCategories, arg.ParentID, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCategory = `-- name: CreateCategory :one
 INSERT INTO categories (user_id, parent_id, name, color_code, sort_order)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
+RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, deleted_at, created_at, updated_at
 `
 
 type CreateCategoryParams struct {
@@ -44,15 +63,30 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.ColorCode,
 		&i.IsActive,
 		&i.SortOrder,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const deleteCategory = `-- name: DeleteCategory :exec
+UPDATE categories
+SET deleted_at = NOW(),
+    updated_at = NOW()
+WHERE uuid = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) DeleteCategory(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCategory, argUuid)
+	return err
+}
+
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
-WHERE id = $1 LIMIT 1
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, deleted_at, created_at, updated_at FROM categories
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1
 `
 
 func (q *Queries) GetCategoryByID(ctx context.Context, id int32) (Category, error) {
@@ -67,6 +101,7 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id int32) (Category, erro
 		&i.ColorCode,
 		&i.IsActive,
 		&i.SortOrder,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -74,8 +109,9 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id int32) (Category, erro
 }
 
 const getCategoryByUUID = `-- name: GetCategoryByUUID :one
-SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
-WHERE uuid = $1 LIMIT 1
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, deleted_at, created_at, updated_at FROM categories
+WHERE uuid = $1 AND deleted_at IS NULL
+LIMIT 1
 `
 
 func (q *Queries) GetCategoryByUUID(ctx context.Context, argUuid uuid.UUID) (Category, error) {
@@ -90,6 +126,7 @@ func (q *Queries) GetCategoryByUUID(ctx context.Context, argUuid uuid.UUID) (Cat
 		&i.ColorCode,
 		&i.IsActive,
 		&i.SortOrder,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -97,8 +134,8 @@ func (q *Queries) GetCategoryByUUID(ctx context.Context, argUuid uuid.UUID) (Cat
 }
 
 const listCategoriesByUserId = `-- name: ListCategoriesByUserId :many
-SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at FROM categories
-WHERE user_id = $1 AND is_active = TRUE
+SELECT id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, deleted_at, created_at, updated_at FROM categories
+WHERE user_id = $1 AND is_active = TRUE AND deleted_at IS NULL
 ORDER BY sort_order ASC
 `
 
@@ -120,6 +157,7 @@ func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]C
 			&i.ColorCode,
 			&i.IsActive,
 			&i.SortOrder,
+			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -142,7 +180,8 @@ SET name = COALESCE($1, name),
     parent_id = COALESCE($5, parent_id),
     updated_at = NOW()
 WHERE uuid = $6
-RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
+  AND deleted_at IS NULL
+RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, deleted_at, created_at, updated_at
 `
 
 type UpdateCategoryParams struct {
@@ -173,6 +212,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		&i.ColorCode,
 		&i.IsActive,
 		&i.SortOrder,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

@@ -18,6 +18,7 @@ type Category struct {
 	ColorCode string             `json:"color_code"`
 	IsActive  bool               `json:"is_active"`
 	SortOrder int32              `json:"sort_order"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

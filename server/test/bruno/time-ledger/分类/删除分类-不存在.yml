@@ -1,0 +1,18 @@
+info:
+  name: 删除分类-不存在
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{localhost}}/api/v1/categories/00000000-0000-0000-0000-000000000000"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYxNjk2MjQsInN1YiI6IjY1NTU3YTU2LTU0MDItNGVlZS04MWRkLTk1YjM2MWVlZWI0MyJ9.gbvAh4oZbwsMqhCpyslGazIiMNo9XMBsuW9UnLzmIQw
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

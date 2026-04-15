@@ -228,3 +228,52 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, userUUID string, c
 
 	return ToCategoryResponse(updatedCategory), nil
 }
+
+// DeleteCategory 删除分类（软删除）
+func (s *CategoryService) DeleteCategory(ctx context.Context, userUUID string, categoryUUID string) error {
+	parsedUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return fmt.Errorf("invalid user UUID")
+	}
+	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
+	if err != nil {
+		return fmt.Errorf("get user failed")
+	}
+	userID := user.ID
+
+	parsedCategoryUUID, err := uuid.Parse(categoryUUID)
+	if err != nil {
+		return fmt.Errorf("invalid category UUID")
+	}
+
+	// 验证分类是否存在并属于当前用户
+	existingCategory, err := s.store.GetCategoryByUUID(ctx, parsedCategoryUUID)
+	if err != nil {
+		return fmt.Errorf("category not found")
+	}
+
+	if existingCategory.UserID != userID {
+		return errors.New("unauthorized category")
+	}
+
+	// 检查是否有子分类
+	subCategoryCount, err := s.store.CountSubCategories(ctx, store.CountSubCategoriesParams{
+		ParentID: pgtype.Int4{Int32: existingCategory.ID, Valid: true},
+		UserID:   userID,
+	})
+	if err != nil {
+		return fmt.Errorf("check sub categories failed")
+	}
+
+	if subCategoryCount > 0 {
+		return fmt.Errorf("cannot delete category with subcategories")
+	}
+
+	// 执行软删除
+	err = s.store.DeleteCategory(ctx, parsedCategoryUUID)
+	if err != nil {
+		return fmt.Errorf("delete category failed: %w", err)
+	}
+
+	return nil
+}

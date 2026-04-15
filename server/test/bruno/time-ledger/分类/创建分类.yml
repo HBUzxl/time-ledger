@@ -13,9 +13,10 @@ http:
     type: json
     data: |-
       {
-          "name": "工作",
+          "name": "工作-子分类",
           "color_code": "#FF5733",
-          "sort_order": 1
+          "sort_order": 1,
+          "parent_uuid": "c30bf3f0-d5bd-463a-bfa1-200c1159eb88"
       }
   auth: inherit
 

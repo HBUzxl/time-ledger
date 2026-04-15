@@ -30,7 +30,7 @@ TimeLedger 是一个基于柳比歇夫时间管理法的时间记录应用，支
 | GET | /api/v1/categories | 获取分类列表 | ✅ |
 | POST | /api/v1/categories | 创建分类 | ✅ |
 | PUT | /api/v1/categories/:uuid | 更新分类 | ✅ |
-| DELETE | /api/v1/categories/:uuid | 删除分类 | ⬜ |
+| DELETE | /api/v1/categories/:uuid | 删除分类 | ✅ |
 
 ### 记录模块 (部分完成)
 
