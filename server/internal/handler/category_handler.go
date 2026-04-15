@@ -75,3 +75,51 @@ func (h *CategoryHandler) CreateCategory(ctx *gin.Context) {
 		"data": category,
 	})
 }
+
+// UpdateCategory 更新分类
+// PUT /api/v1/categories/:uuid
+func (h *CategoryHandler) UpdateCategory(ctx *gin.Context) {
+	categoryUUID := ctx.Param("uuid")
+	if categoryUUID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "category uuid is required",
+		})
+		return
+	}
+
+	var req service.UpdateCategoryRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body",
+		})
+		return
+	}
+
+	userUUID, exists := ctx.Get("user_uuid")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "user not authenticated",
+		})
+		return
+	}
+
+	category, err := h.service.UpdateCategory(ctx.Request.Context(), userUUID.(string), categoryUUID, req)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		errorMsg := "failed to update category"
+		
+		if err.Error() == "category not found" || err.Error() == "unauthorized category" {
+			statusCode = http.StatusNotFound
+			errorMsg = err.Error()
+		}
+		
+		ctx.JSON(statusCode, gin.H{
+			"error": errorMsg,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": category,
+	})
+}

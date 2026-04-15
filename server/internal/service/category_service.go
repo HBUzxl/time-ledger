@@ -131,3 +131,100 @@ func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, r
 
 	return ToCategoryResponse(category), nil
 }
+
+type UpdateCategoryRequest struct {
+	Name         *string    `json:"name"`
+	ColorCode    *string    `json:"color_code"`
+	IsActive     *bool      `json:"is_active"`
+	SortOrder    *int32     `json:"sort_order"`
+	ParentUUID   *uuid.UUID `json:"parent_id"`            // 可选，默认为 nil（不更新）
+	ClearParent *bool      `json:"clear_parent_id"`      // 是否清空父分类
+}
+
+// UpdateCategory 更新分类
+func (s *CategoryService) UpdateCategory(ctx context.Context, userUUID string, categoryUUID string, req UpdateCategoryRequest) (CategoryResponse, error) {
+	parsedUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return CategoryResponse{}, fmt.Errorf("invalid user UUID")
+	}
+	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
+	if err != nil {
+		return CategoryResponse{}, fmt.Errorf("get user failed")
+	}
+	userID := user.ID
+
+	parsedCategoryUUID, err := uuid.Parse(categoryUUID)
+	if err != nil {
+		return CategoryResponse{}, fmt.Errorf("invalid category UUID")
+	}
+
+	// 验证分类是否存在并属于当前用户
+	existingCategory, err := s.store.GetCategoryByUUID(ctx, parsedCategoryUUID)
+	if err != nil {
+		return CategoryResponse{}, fmt.Errorf("category not found")
+	}
+
+	if existingCategory.UserID != userID {
+		return CategoryResponse{}, errors.New("unauthorized category")
+	}
+
+	// 构建更新参数
+	updateParams := store.UpdateCategoryParams{
+		UUID:      parsedCategoryUUID,
+		Name:      pgtype.Text{Valid: false},
+		ColorCode: pgtype.Text{Valid: false},
+		IsActive:  pgtype.Bool{Valid: false},
+		SortOrder: pgtype.Int4{Valid: false},
+		ParentID:  pgtype.Int4{Valid: false},
+	}
+
+	// 只更新提供的字段
+	if req.Name != nil {
+		updateParams.Name = pgtype.Text{String: *req.Name, Valid: true}
+	}
+	if req.ColorCode != nil {
+		updateParams.ColorCode = pgtype.Text{String: *req.ColorCode, Valid: true}
+	}
+	if req.IsActive != nil {
+		updateParams.IsActive = pgtype.Bool{Bool: *req.IsActive, Valid: true}
+	}
+	if req.SortOrder != nil {
+		updateParams.SortOrder = pgtype.Int4{Int32: *req.SortOrder, Valid: true}
+	}
+
+	// 处理父分类更新
+	if req.ClearParent != nil && *req.ClearParent {
+		// 明确请求清空父分类
+		updateParams.ParentID = pgtype.Int4{Valid: false}
+	} else if req.ParentUUID != nil {
+		// 提供了父分类 UUID，验证并设置
+		parentCategory, err := s.store.GetCategoryByUUID(ctx, *req.ParentUUID)
+		if err != nil {
+			return CategoryResponse{}, fmt.Errorf("parent category not found")
+		}
+
+		// 验证父分类是否属于当前用户
+		if parentCategory.UserID != userID {
+			return CategoryResponse{}, errors.New("unauthorized parent category")
+		}
+
+		// 验证父分类不能是一个子分类（只能有两层：父分类 -> 子分类）
+		if parentCategory.ParentID.Valid {
+			return CategoryResponse{}, errors.New("cannot set a subcategory as parent")
+		}
+
+		// 验证不能将分类设置为自己为父分类
+		if parentCategory.UUID == parsedCategoryUUID {
+			return CategoryResponse{}, errors.New("cannot set self as parent")
+		}
+
+		updateParams.ParentID = pgtype.Int4{Int32: parentCategory.ID, Valid: true}
+	}
+
+	updatedCategory, err := s.store.UpdateCategory(ctx, updateParams)
+	if err != nil {
+		return CategoryResponse{}, fmt.Errorf("update category failed: %w", err)
+	}
+
+	return ToCategoryResponse(updatedCategory), nil
+}

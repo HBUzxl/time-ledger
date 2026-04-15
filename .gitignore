@@ -1,2 +1,6 @@
 .env
 .qwen
+QWEN.md
+AGENTS.md
+server/test/bruno
+server/main

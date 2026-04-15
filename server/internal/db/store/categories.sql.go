@@ -132,3 +132,49 @@ func (q *Queries) ListCategoriesByUserId(ctx context.Context, userID int32) ([]C
 	}
 	return items, nil
 }
+
+const updateCategory = `-- name: UpdateCategory :one
+UPDATE categories
+SET name = COALESCE($1, name),
+    color_code = COALESCE($2, color_code),
+    is_active = COALESCE($3, is_active),
+    sort_order = COALESCE($4, sort_order),
+    parent_id = COALESCE($5, parent_id),
+    updated_at = NOW()
+WHERE uuid = $6
+RETURNING id, uuid, user_id, parent_id, name, color_code, is_active, sort_order, created_at, updated_at
+`
+
+type UpdateCategoryParams struct {
+	Name      pgtype.Text `json:"name"`
+	ColorCode pgtype.Text `json:"color_code"`
+	IsActive  pgtype.Bool `json:"is_active"`
+	SortOrder pgtype.Int4 `json:"sort_order"`
+	ParentID  pgtype.Int4 `json:"parent_id"`
+	UUID      uuid.UUID   `json:"uuid"`
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error) {
+	row := q.db.QueryRow(ctx, updateCategory,
+		arg.Name,
+		arg.ColorCode,
+		arg.IsActive,
+		arg.SortOrder,
+		arg.ParentID,
+		arg.UUID,
+	)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.UUID,
+		&i.UserID,
+		&i.ParentID,
+		&i.Name,
+		&i.ColorCode,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
