@@ -12,6 +12,38 @@ import (
 
 const SystemPublicUserID = 0
 
+// RecordResponse 时间记录响应DTO（隐藏内部ID，使用UUID）
+type RecordResponse struct {
+	UUID            uuid.UUID `json:"uuid"`
+	CategoryUUID    uuid.UUID `json:"category_uuid"`
+	StartTime       time.Time `json:"start_time"`
+	EndTime         time.Time `json:"end_time"`
+	DurationMinutes int32     `json:"duration_minutes"`
+	Note            string    `json:"note,omitempty"`
+	Source          string    `json:"source"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// ToRecordResponse 将数据库模型转换为响应DTO
+func ToRecordResponse(record *store.TimeRecord, categoryUUID uuid.UUID) RecordResponse {
+	note := ""
+	if record.Note.Valid {
+		note = record.Note.String
+	}
+	return RecordResponse{
+		UUID:            record.UUID,
+		CategoryUUID:    categoryUUID,
+		StartTime:       record.StartTime.Time,
+		EndTime:         record.EndTime.Time,
+		DurationMinutes: record.DurationMinutes,
+		Note:            note,
+		Source:          record.Source,
+		CreatedAt:       record.CreatedAt.Time,
+		UpdatedAt:       record.UpdatedAt.Time,
+	}
+}
+
 type RecordService struct {
 	store *store.Queries
 }
@@ -29,35 +61,35 @@ type CreateRecordRequest struct {
 }
 
 // CreateRecord 创建新的时间记录
-func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req CreateRecordRequest) (*store.TimeRecord, error) {
+func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req CreateRecordRequest) (RecordResponse, error) {
 	// 0. 根据用户 UUID 获取用户 ID
 	parsedUUID, err := uuid.Parse(userUUID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user UUID")
+		return RecordResponse{}, fmt.Errorf("invalid user UUID")
 	}
 	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
 	if err != nil {
-		return nil, fmt.Errorf("get user failed")
+		return RecordResponse{}, fmt.Errorf("get user failed")
 	}
 	userID := user.ID
 
 	// 1. 验证分类是否存在且属于该用户
 	category, err := s.store.GetCategoryByID(ctx, req.CategoryID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid category: %w", err)
+		return RecordResponse{}, fmt.Errorf("invalid category: %w", err)
 	}
 
 	// 只有自己的分类或者系统公共分类可以使用
 	isOwner := category.UserID == userID
 	isPublic := category.UserID == SystemPublicUserID
 	if !isOwner && !isPublic {
-		return nil, fmt.Errorf("category does not belong to user")
+		return RecordResponse{}, fmt.Errorf("category does not belong to user")
 	}
 
 	// 2. 计算持续时间（分钟）
 	duration := int32(req.EndTime.Sub(req.StartTime).Minutes())
 	if duration <= 0 {
-		return nil, fmt.Errorf("end time must be after start time")
+		return RecordResponse{}, fmt.Errorf("end time must be after start time")
 	}
 
 	source := req.Source
@@ -80,7 +112,9 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 		Source:          source,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create record: %w", err)
+		return RecordResponse{}, fmt.Errorf("failed to create record: %w", err)
 	}
-	return &record, nil
+
+	// 4. 转换为响应DTO
+	return ToRecordResponse(&record, category.UUID), nil
 }
