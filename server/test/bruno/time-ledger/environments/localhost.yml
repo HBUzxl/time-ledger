@@ -1,0 +1,8 @@
+name: localhost
+variables:
+  - name: localhost
+    value: http://localhost:8080
+  - name: category_uuid
+    value: b8200cc8-b95a-4052-9153-038dae0b79f3
+  - name: token
+    value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyMzU1NzgsInN1YiI6IjY1NTU3YTU2LTU0MDItNGVlZS04MWRkLTk1YjM2MWVlZWI0MyJ9.X7q3BD79StYGkt1ESBdi3C4bqnU8HzSUg-E232pBuy0

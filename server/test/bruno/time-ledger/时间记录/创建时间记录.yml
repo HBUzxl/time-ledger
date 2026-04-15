@@ -1,0 +1,28 @@
+info:
+  name: 创建时间记录
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{localhost}}/api/v1/records"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyMzM5NDUsInN1YiI6IjY1NTU3YTU2LTU0MDItNGVlZS04MWRkLTk1YjM2MWVlZWI0MyJ9.2dqrisKJo5Dbwn-sJbSuBn5jHab1J-cy3Vdmki-okVY
+  body:
+    type: json
+    data: |-
+      {
+        "category_id": 1,
+        "start_time": "2026-04-14T09:00:00Z",
+        "end_time": "2026-04-14T12:00:00Z",
+        "note": "工作内容描述",
+        "source": "manual"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

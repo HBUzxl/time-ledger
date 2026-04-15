@@ -1,0 +1,30 @@
+info:
+  name: 更新分类
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{localhost}}/api/v1/categories/{{category_uuid}}"
+  headers:
+    - name: Authorization
+      value: "{{token}}"
+  params:
+    - name: ""
+      value: ""
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+          "name": "工作-更新",
+          "color_code": "#00FF00",
+          "sort_order": 10
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
