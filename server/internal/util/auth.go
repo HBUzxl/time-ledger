@@ -25,10 +25,10 @@ func CheckPasswordHash(password, hash string) bool {
 
 // GenerateJWT 生成访问令牌和刷新令牌
 func GenerateJWT(userUUID uuid.UUID, secretKey string) (at string, rt string, err error) {
-	// Access Token, 有效期15分钟
+	// Access Token, 有效期24小时(测试用)
 	atClaims := jwt.MapClaims{
 		"sub": userUUID.String(),
-		"exp": time.Now().Add(15 * time.Minute).Unix(),
+		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	}
 	atToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims).SignedString([]byte(secretKey))
 	if err != nil {
