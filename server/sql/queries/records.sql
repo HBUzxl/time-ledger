@@ -16,7 +16,26 @@ SELECT EXISTS (
 -- name: GetDailyRecords :many
 -- 获取用户在指定日期范围内的时间记录
 SELECT * FROM time_records
-WHERE user_id = $1 
-AND start_time >= $2 
+WHERE user_id = $1
+AND start_time >= $2
 AND start_time < $3
 ORDER BY start_time ASC;
+
+-- name: GetRecords :many
+-- 获取记录列表（支持分页和日期过滤）
+SELECT tr.*, c.uuid as category_uuid
+FROM time_records tr
+LEFT JOIN categories c ON tr.category_id = c.id
+WHERE tr.user_id = $1
+AND tr.start_time >= $2
+AND tr.start_time < $3
+ORDER BY tr.start_time DESC
+LIMIT $4 OFFSET $5;
+
+-- name: CountRecords :one
+-- 统计记录数量
+SELECT COUNT(*)
+FROM time_records tr
+WHERE tr.user_id = $1
+AND tr.start_time >= $2
+AND tr.start_time < $3;

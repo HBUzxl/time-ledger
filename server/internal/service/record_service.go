@@ -25,6 +25,21 @@ type RecordResponse struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+type ListRecordsRequest struct {
+	StartDate string `form:"start_date" binding:"required"`
+	EndDate   string `form:"end_date" binding:"required"`
+	Page      int    `form:"page"`
+	PageSize  int    `form:"page_size"`
+}
+
+type ListRecordsResponse struct {
+	Records   []RecordResponse `json:"records"`
+	Page      int              `json:"page"`
+	PageSize  int              `json:"page_size"`
+	Total     int64            `json:"total"`
+	TotalPage int64            `json:"total_page"`
+}
+
 // ToRecordResponse 将数据库模型转换为响应DTO
 func ToRecordResponse(record *store.TimeRecord, categoryUUID uuid.UUID) RecordResponse {
 	note := ""
@@ -117,4 +132,93 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 
 	// 4. 转换为响应DTO
 	return ToRecordResponse(&record, category.UUID), nil
+}
+
+// ListRecords 列出用户在指定日期范围内的时间记录，支持分页
+func (s *RecordService) ListRecords(ctx context.Context, userUUID string, req ListRecordsRequest) (ListRecordsResponse, error) {
+	parsedUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("invalid user UUID")
+	}
+	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("get user failed")
+	}
+	userID := user.ID
+
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("invalid start_date format")
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("invalid end_date format")
+	}
+	// 包含结束日期的全天
+	endDate = endDate.AddDate(0, 0, 1)
+
+	page := req.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := int32((page - 1) * pageSize)
+
+	startTime := pgtype.Timestamptz{Time: startDate, Valid: true}
+	endTime := pgtype.Timestamptz{Time: endDate, Valid: true}
+
+	records, err := s.store.GetRecords(ctx, store.GetRecordsParams{
+		UserID:      userID,
+		StartTime:   startTime,
+		StartTime_2: endTime,
+		Limit:       int32(pageSize),
+		Offset:      offset,
+	})
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("failed to get records: %w", err)
+	}
+
+	total, err := s.store.CountRecords(ctx, store.CountRecordsParams{
+		UserID:      userID,
+		StartTime:   startTime,
+		StartTime_2: endTime,
+	})
+	if err != nil {
+		return ListRecordsResponse{}, fmt.Errorf("failed to count records: %w", err)
+	}
+
+	var recordResponses []RecordResponse
+	for _, r := range records {
+		categoryUUID := uuid.Nil
+		if r.CategoryUuid.Valid {
+			u, _ := r.CategoryUuid.UUIDValue()
+			categoryUUID = u.Bytes
+		}
+		recordResponses = append(recordResponses, ToRecordResponse(&store.TimeRecord{
+			ID:              r.ID,
+			UUID:            r.UUID,
+			UserID:          r.UserID,
+			CategoryID:      r.CategoryID,
+			StartTime:       r.StartTime,
+			EndTime:         r.EndTime,
+			DurationMinutes: r.DurationMinutes,
+			Note:            r.Note,
+			Source:          r.Source,
+			CreatedAt:       r.CreatedAt,
+			UpdatedAt:       r.UpdatedAt,
+		}, categoryUUID))
+	}
+
+	totalPage := (total + int64(pageSize) - 1) / int64(pageSize)
+
+	return ListRecordsResponse{
+		Records:   recordResponses,
+		Page:      page,
+		PageSize:  pageSize,
+		Total:     total,
+		TotalPage: totalPage,
+	}, nil
 }

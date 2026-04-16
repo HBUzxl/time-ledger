@@ -8,6 +8,7 @@ package store
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -31,6 +32,28 @@ func (q *Queries) CheckOverlap(ctx context.Context, arg CheckOverlapParams) (boo
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const countRecords = `-- name: CountRecords :one
+SELECT COUNT(*)
+FROM time_records tr
+WHERE tr.user_id = $1
+AND tr.start_time >= $2
+AND tr.start_time < $3
+`
+
+type CountRecordsParams struct {
+	UserID      int32              `json:"user_id"`
+	StartTime   pgtype.Timestamptz `json:"start_time"`
+	StartTime_2 pgtype.Timestamptz `json:"start_time_2"`
+}
+
+// 统计记录数量
+func (q *Queries) CountRecords(ctx context.Context, arg CountRecordsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecords, arg.UserID, arg.StartTime, arg.StartTime_2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const createRecord = `-- name: CreateRecord :one
@@ -80,8 +103,8 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 
 const getDailyRecords = `-- name: GetDailyRecords :many
 SELECT id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at FROM time_records
-WHERE user_id = $1 
-AND start_time >= $2 
+WHERE user_id = $1
+AND start_time >= $2
 AND start_time < $3
 ORDER BY start_time ASC
 `
@@ -114,6 +137,80 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 			&i.Source,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecords = `-- name: GetRecords :many
+SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.created_at, tr.updated_at, c.uuid as category_uuid
+FROM time_records tr
+LEFT JOIN categories c ON tr.category_id = c.id
+WHERE tr.user_id = $1
+AND tr.start_time >= $2
+AND tr.start_time < $3
+ORDER BY tr.start_time DESC
+LIMIT $4 OFFSET $5
+`
+
+type GetRecordsParams struct {
+	UserID      int32              `json:"user_id"`
+	StartTime   pgtype.Timestamptz `json:"start_time"`
+	StartTime_2 pgtype.Timestamptz `json:"start_time_2"`
+	Limit       int32              `json:"limit"`
+	Offset      int32              `json:"offset"`
+}
+
+type GetRecordsRow struct {
+	ID              int32              `json:"id"`
+	UUID            uuid.UUID          `json:"uuid"`
+	UserID          int32              `json:"user_id"`
+	CategoryID      pgtype.Int4        `json:"category_id"`
+	StartTime       pgtype.Timestamptz `json:"start_time"`
+	EndTime         pgtype.Timestamptz `json:"end_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Note            pgtype.Text        `json:"note"`
+	Source          string             `json:"source"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	CategoryUuid    pgtype.UUID        `json:"category_uuid"`
+}
+
+// 获取记录列表（支持分页和日期过滤）
+func (q *Queries) GetRecords(ctx context.Context, arg GetRecordsParams) ([]GetRecordsRow, error) {
+	rows, err := q.db.Query(ctx, getRecords,
+		arg.UserID,
+		arg.StartTime,
+		arg.StartTime_2,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecordsRow
+	for rows.Next() {
+		var i GetRecordsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UUID,
+			&i.UserID,
+			&i.CategoryID,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationMinutes,
+			&i.Note,
+			&i.Source,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CategoryUuid,
 		); err != nil {
 			return nil, err
 		}
