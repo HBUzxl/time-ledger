@@ -68,6 +68,18 @@ services:
       - db
       - redis
 
+  # 前端 Web 服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "8082:80"
+    depends_on:
+      - server
+
 volumes:
   postgres_data:
   redis_data:
