@@ -68,11 +68,18 @@ func NewRecordService(store *store.Queries) *RecordService {
 }
 
 type CreateRecordRequest struct {
-	CategoryID int32     `json:"category_id" binding:"required"`
-	StartTime  time.Time `json:"start_time" binding:"required"`
-	EndTime    time.Time `json:"end_time" binding:"required,gtfield=StartTime"`
-	Note       string    `json:"note"`
-	Source     string    `json:"source"` // 默认为 "manual"
+	CategoryUUID string    `json:"category_uuid" binding:"required"`
+	StartTime    time.Time `json:"start_time" binding:"required"`
+	EndTime      time.Time `json:"end_time" binding:"required,gtfield=StartTime"`
+	Note         string    `json:"note"`
+	Source       string    `json:"source"` // 默认为 "manual"
+}
+
+type UpdateRecordRequest struct {
+	CategoryUUID string    `json:"category_uuid" binding:"required"`
+	StartTime    time.Time `json:"start_time" binding:"required"`
+	EndTime      time.Time `json:"end_time" binding:"required,gtfield=StartTime"`
+	Note         string    `json:"note"`
 }
 
 // CreateRecord 创建新的时间记录
@@ -88,8 +95,12 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 	}
 	userID := user.ID
 
-	// 1. 验证分类是否存在且属于该用户
-	category, err := s.store.GetCategoryByID(ctx, req.CategoryID)
+	// 1. 根据 category_uuid 获取分类
+	categoryUUID, err := uuid.Parse(req.CategoryUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("invalid category UUID")
+	}
+	category, err := s.store.GetCategoryByUUID(ctx, categoryUUID)
 	if err != nil {
 		return RecordResponse{}, fmt.Errorf("invalid category: %w", err)
 	}
@@ -111,7 +122,7 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 	if source == "" {
 		source = "manual"
 	}
-	categoryID := pgtype.Int4{Int32: req.CategoryID, Valid: true}
+	categoryID := pgtype.Int4{Int32: category.ID, Valid: true}
 	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
 	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
 	note := pgtype.Text{String: req.Note, Valid: req.Note != ""}
@@ -221,4 +232,75 @@ func (s *RecordService) ListRecords(ctx context.Context, userUUID string, req Li
 		Total:     total,
 		TotalPage: totalPage,
 	}, nil
+}
+
+func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recordUUID string, req UpdateRecordRequest) (RecordResponse, error) {
+	parsedUserUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("invalid user UUID")
+	}
+	user, err := s.store.GetUserByUUID(ctx, parsedUserUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("get user failed")
+	}
+	userID := user.ID
+
+	parsedRecordUUID, err := uuid.Parse(recordUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("invalid record UUID")
+	}
+
+	existingRecord, err := s.store.GetRecordByUUID(ctx, store.GetRecordByUUIDParams{
+		UUID:   parsedRecordUUID,
+		UserID: userID,
+	})
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("record not found")
+	}
+
+	categoryUUID, err := uuid.Parse(req.CategoryUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("invalid category UUID")
+	}
+	category, err := s.store.GetCategoryByUUID(ctx, categoryUUID)
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("invalid category: %w", err)
+	}
+
+	isOwner := category.UserID == userID
+	isPublic := category.UserID == SystemPublicUserID
+	if !isOwner && !isPublic {
+		return RecordResponse{}, fmt.Errorf("category does not belong to user")
+	}
+
+	duration := int32(req.EndTime.Sub(req.StartTime).Minutes())
+	if duration <= 0 {
+		return RecordResponse{}, fmt.Errorf("end time must be after start time")
+	}
+
+	categoryID := pgtype.Int4{Int32: category.ID, Valid: true}
+	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
+	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
+	note := pgtype.Text{String: req.Note, Valid: req.Note != ""}
+
+	record, err := s.store.UpdateRecord(ctx, store.UpdateRecordParams{
+		UUID:            parsedRecordUUID,
+		CategoryID:      categoryID,
+		StartTime:       startTime,
+		EndTime:         endTime,
+		DurationMinutes: duration,
+		Note:            note,
+		UserID:          userID,
+	})
+	if err != nil {
+		return RecordResponse{}, fmt.Errorf("failed to update record: %w", err)
+	}
+
+	var originalCategoryUUID uuid.UUID
+	if existingRecord.CategoryUuid.Valid {
+		u, _ := existingRecord.CategoryUuid.UUIDValue()
+		originalCategoryUUID = u.Bytes
+	}
+
+	return ToRecordResponse(&record, originalCategoryUUID), nil
 }

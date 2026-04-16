@@ -74,3 +74,41 @@ func (h *RecordHandler) ListRecords(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, records)
 }
+
+// UpdateRecord 更新记录
+// PUT /api/v1/records/:uuid
+func (h *RecordHandler) UpdateRecord(ctx *gin.Context) {
+	recordUUID := ctx.Param("uuid")
+	if recordUUID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "record uuid is required",
+		})
+		return
+	}
+
+	var req service.UpdateRecordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	userUUID, exists := ctx.Get("user_uuid")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "user not authenticated",
+		})
+		return
+	}
+
+	record, err := h.service.UpdateRecord(ctx.Request.Context(), userUUID.(string), recordUUID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to update record: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, record)
+}

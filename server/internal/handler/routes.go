@@ -50,6 +50,7 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 		records.Use(middleware.AuthMiddleware(jwtSecret))
 		records.GET("", recordHandler.ListRecords)
 		records.POST("", recordHandler.CreateRecord)
+		records.PUT("/:uuid", recordHandler.UpdateRecord)
 	}
 
 	// users := r.Group("/users")

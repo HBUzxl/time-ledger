@@ -101,6 +101,21 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 	return i, err
 }
 
+const deleteRecord = `-- name: DeleteRecord :exec
+DELETE FROM time_records WHERE uuid = $1 AND user_id = $2
+`
+
+type DeleteRecordParams struct {
+	UUID   uuid.UUID `json:"uuid"`
+	UserID int32     `json:"user_id"`
+}
+
+// 删除记录
+func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) error {
+	_, err := q.db.Exec(ctx, deleteRecord, arg.UUID, arg.UserID)
+	return err
+}
+
 const getDailyRecords = `-- name: GetDailyRecords :many
 SELECT id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at FROM time_records
 WHERE user_id = $1
@@ -146,6 +161,54 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const getRecordByUUID = `-- name: GetRecordByUUID :one
+SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.created_at, tr.updated_at, c.uuid as category_uuid
+FROM time_records tr
+LEFT JOIN categories c ON tr.category_id = c.id
+WHERE tr.uuid = $1 AND tr.user_id = $2
+`
+
+type GetRecordByUUIDParams struct {
+	UUID   uuid.UUID `json:"uuid"`
+	UserID int32     `json:"user_id"`
+}
+
+type GetRecordByUUIDRow struct {
+	ID              int32              `json:"id"`
+	UUID            uuid.UUID          `json:"uuid"`
+	UserID          int32              `json:"user_id"`
+	CategoryID      pgtype.Int4        `json:"category_id"`
+	StartTime       pgtype.Timestamptz `json:"start_time"`
+	EndTime         pgtype.Timestamptz `json:"end_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Note            pgtype.Text        `json:"note"`
+	Source          string             `json:"source"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	CategoryUuid    pgtype.UUID        `json:"category_uuid"`
+}
+
+// 根据UUID获取单条记录
+func (q *Queries) GetRecordByUUID(ctx context.Context, arg GetRecordByUUIDParams) (GetRecordByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getRecordByUUID, arg.UUID, arg.UserID)
+	var i GetRecordByUUIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UUID,
+		&i.UserID,
+		&i.CategoryID,
+		&i.StartTime,
+		&i.EndTime,
+		&i.DurationMinutes,
+		&i.Note,
+		&i.Source,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CategoryUuid,
+	)
+	return i, err
 }
 
 const getRecords = `-- name: GetRecords :many
@@ -220,4 +283,49 @@ func (q *Queries) GetRecords(ctx context.Context, arg GetRecordsParams) ([]GetRe
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateRecord = `-- name: UpdateRecord :one
+UPDATE time_records
+SET category_id = $2, start_time = $3, end_time = $4, duration_minutes = $5, note = $6, updated_at = NOW()
+WHERE uuid = $1 AND user_id = $7
+RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at
+`
+
+type UpdateRecordParams struct {
+	UUID            uuid.UUID          `json:"uuid"`
+	CategoryID      pgtype.Int4        `json:"category_id"`
+	StartTime       pgtype.Timestamptz `json:"start_time"`
+	EndTime         pgtype.Timestamptz `json:"end_time"`
+	DurationMinutes int32              `json:"duration_minutes"`
+	Note            pgtype.Text        `json:"note"`
+	UserID          int32              `json:"user_id"`
+}
+
+// 更新记录
+func (q *Queries) UpdateRecord(ctx context.Context, arg UpdateRecordParams) (TimeRecord, error) {
+	row := q.db.QueryRow(ctx, updateRecord,
+		arg.UUID,
+		arg.CategoryID,
+		arg.StartTime,
+		arg.EndTime,
+		arg.DurationMinutes,
+		arg.Note,
+		arg.UserID,
+	)
+	var i TimeRecord
+	err := row.Scan(
+		&i.ID,
+		&i.UUID,
+		&i.UserID,
+		&i.CategoryID,
+		&i.StartTime,
+		&i.EndTime,
+		&i.DurationMinutes,
+		&i.Note,
+		&i.Source,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
