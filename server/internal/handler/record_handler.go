@@ -34,7 +34,7 @@ func (h *RecordHandler) CreateRecord(ctx *gin.Context) {
 		return
 	}
 
-	record, err := h.service.CreateRecord(ctx.Request.Context(), userUUID.(string), req)
+	result, err := h.service.CreateRecord(ctx.Request.Context(), userUUID.(string), req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to create record: " + err.Error(),
@@ -42,7 +42,7 @@ func (h *RecordHandler) CreateRecord(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, record)
+	ctx.JSON(http.StatusCreated, result)
 }
 
 // ListRecords 获取记录列表
@@ -102,7 +102,7 @@ func (h *RecordHandler) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	record, err := h.service.UpdateRecord(ctx.Request.Context(), userUUID.(string), recordUUID, req)
+	result, err := h.service.UpdateRecord(ctx.Request.Context(), userUUID.(string), recordUUID, req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to update record: " + err.Error(),
@@ -110,7 +110,7 @@ func (h *RecordHandler) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, record)
+	ctx.JSON(http.StatusOK, result)
 }
 
 // DeleteRecord 删除记录

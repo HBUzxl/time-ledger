@@ -75,6 +75,11 @@ type CreateRecordRequest struct {
 	Source       string    `json:"source"` // 默认为 "manual"
 }
 
+type CreateRecordResponse struct {
+	Record  RecordResponse `json:"record"`
+	Warning string         `json:"warning,omitempty"`
+}
+
 type UpdateRecordRequest struct {
 	CategoryUUID string    `json:"category_uuid" binding:"required"`
 	StartTime    time.Time `json:"start_time" binding:"required"`
@@ -82,40 +87,67 @@ type UpdateRecordRequest struct {
 	Note         string    `json:"note"`
 }
 
+type UpdateRecordResponse struct {
+	Record  RecordResponse `json:"record"`
+	Warning string         `json:"warning,omitempty"`
+}
+
 // CreateRecord 创建新的时间记录
-func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req CreateRecordRequest) (RecordResponse, error) {
+func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req CreateRecordRequest) (CreateRecordResponse, error) {
 	// 0. 根据用户 UUID 获取用户 ID
 	parsedUUID, err := uuid.Parse(userUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid user UUID")
+		return CreateRecordResponse{}, fmt.Errorf("invalid user UUID")
 	}
 	user, err := s.store.GetUserByUUID(ctx, parsedUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("get user failed")
+		return CreateRecordResponse{}, fmt.Errorf("get user failed")
 	}
 	userID := user.ID
 
 	// 1. 根据 category_uuid 获取分类
 	categoryUUID, err := uuid.Parse(req.CategoryUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid category UUID")
+		return CreateRecordResponse{}, fmt.Errorf("invalid category UUID")
 	}
 	category, err := s.store.GetCategoryByUUID(ctx, categoryUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid category: %w", err)
+		return CreateRecordResponse{}, fmt.Errorf("invalid category: %w", err)
 	}
 
 	// 只有自己的分类或者系统公共分类可以使用
 	isOwner := category.UserID == userID
 	isPublic := category.UserID == SystemPublicUserID
 	if !isOwner && !isPublic {
-		return RecordResponse{}, fmt.Errorf("category does not belong to user")
+		return CreateRecordResponse{}, fmt.Errorf("category does not belong to user")
 	}
 
 	// 2. 计算持续时间（分钟）
 	duration := int32(req.EndTime.Sub(req.StartTime).Minutes())
 	if duration <= 0 {
-		return RecordResponse{}, fmt.Errorf("end time must be after start time")
+		return CreateRecordResponse{}, fmt.Errorf("end time must be after start time")
+	}
+
+	// 3. 检查时间冲突
+	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
+	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
+
+	hasOverlap, err := s.store.CheckOverlap(ctx, store.CheckOverlapParams{
+		UserID:     userID,
+		Overlaps:   startTime,
+		Overlaps_2: endTime,
+	})
+	if err != nil {
+		return CreateRecordResponse{}, fmt.Errorf("failed to check overlap: %w", err)
+	}
+
+	var warning string
+	if hasOverlap {
+		warning = "time_conflict"
+		return CreateRecordResponse{
+			Record:  RecordResponse{}, // 不返回记录数据
+			Warning: warning,
+		}, nil
 	}
 
 	source := req.Source
@@ -123,11 +155,9 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 		source = "manual"
 	}
 	categoryID := pgtype.Int4{Int32: category.ID, Valid: true}
-	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
-	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
 	note := pgtype.Text{String: req.Note, Valid: req.Note != ""}
 
-	// 3. 创建记录
+	// 4. 创建记录
 	record, err := s.store.CreateRecord(ctx, store.CreateRecordParams{
 		UserID:          userID,
 		CategoryID:      categoryID,
@@ -138,11 +168,14 @@ func (s *RecordService) CreateRecord(ctx context.Context, userUUID string, req C
 		Source:          source,
 	})
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("failed to create record: %w", err)
+		return CreateRecordResponse{}, fmt.Errorf("failed to create record: %w", err)
 	}
 
-	// 4. 转换为响应DTO
-	return ToRecordResponse(&record, category.UUID), nil
+	// 5. 转换为响应DTO
+	return CreateRecordResponse{
+		Record:  ToRecordResponse(&record, category.UUID),
+		Warning: warning,
+	}, nil
 }
 
 // ListRecords 列出用户在指定日期范围内的时间记录，支持分页
@@ -234,20 +267,20 @@ func (s *RecordService) ListRecords(ctx context.Context, userUUID string, req Li
 	}, nil
 }
 
-func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recordUUID string, req UpdateRecordRequest) (RecordResponse, error) {
+func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recordUUID string, req UpdateRecordRequest) (UpdateRecordResponse, error) {
 	parsedUserUUID, err := uuid.Parse(userUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid user UUID")
+		return UpdateRecordResponse{}, fmt.Errorf("invalid user UUID")
 	}
 	user, err := s.store.GetUserByUUID(ctx, parsedUserUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("get user failed")
+		return UpdateRecordResponse{}, fmt.Errorf("get user failed")
 	}
 	userID := user.ID
 
 	parsedRecordUUID, err := uuid.Parse(recordUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid record UUID")
+		return UpdateRecordResponse{}, fmt.Errorf("invalid record UUID")
 	}
 
 	existingRecord, err := s.store.GetRecordByUUID(ctx, store.GetRecordByUUIDParams{
@@ -255,32 +288,51 @@ func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recor
 		UserID: userID,
 	})
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("record not found")
+		return UpdateRecordResponse{}, fmt.Errorf("record not found")
 	}
 
 	categoryUUID, err := uuid.Parse(req.CategoryUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid category UUID")
+		return UpdateRecordResponse{}, fmt.Errorf("invalid category UUID")
 	}
 	category, err := s.store.GetCategoryByUUID(ctx, categoryUUID)
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("invalid category: %w", err)
+		return UpdateRecordResponse{}, fmt.Errorf("invalid category: %w", err)
 	}
 
 	isOwner := category.UserID == userID
 	isPublic := category.UserID == SystemPublicUserID
 	if !isOwner && !isPublic {
-		return RecordResponse{}, fmt.Errorf("category does not belong to user")
+		return UpdateRecordResponse{}, fmt.Errorf("category does not belong to user")
 	}
 
 	duration := int32(req.EndTime.Sub(req.StartTime).Minutes())
 	if duration <= 0 {
-		return RecordResponse{}, fmt.Errorf("end time must be after start time")
+		return UpdateRecordResponse{}, fmt.Errorf("end time must be after start time")
+	}
+
+	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
+	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
+
+	hasOverlap, err := s.store.CheckOverlap(ctx, store.CheckOverlapParams{
+		UserID:     userID,
+		Overlaps:   startTime,
+		Overlaps_2: endTime,
+	})
+	if err != nil {
+		return UpdateRecordResponse{}, fmt.Errorf("failed to check overlap: %w", err)
+	}
+
+	var warning string
+	if hasOverlap {
+		warning = "time_conflict"
+		return UpdateRecordResponse{
+			Record:  RecordResponse{}, // 不返回记录数据
+			Warning: warning,
+		}, nil
 	}
 
 	categoryID := pgtype.Int4{Int32: category.ID, Valid: true}
-	startTime := pgtype.Timestamptz{Time: req.StartTime, Valid: true}
-	endTime := pgtype.Timestamptz{Time: req.EndTime, Valid: true}
 	note := pgtype.Text{String: req.Note, Valid: req.Note != ""}
 
 	record, err := s.store.UpdateRecord(ctx, store.UpdateRecordParams{
@@ -293,7 +345,7 @@ func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recor
 		UserID:          userID,
 	})
 	if err != nil {
-		return RecordResponse{}, fmt.Errorf("failed to update record: %w", err)
+		return UpdateRecordResponse{}, fmt.Errorf("failed to update record: %w", err)
 	}
 
 	var originalCategoryUUID uuid.UUID
@@ -302,7 +354,10 @@ func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recor
 		originalCategoryUUID = u.Bytes
 	}
 
-	return ToRecordResponse(&record, originalCategoryUUID), nil
+	return UpdateRecordResponse{
+		Record:  ToRecordResponse(&record, originalCategoryUUID),
+		Warning: warning,
+	}, nil
 }
 
 func (s *RecordService) DeleteRecord(ctx context.Context, userUUID string, recordUUID string) error {

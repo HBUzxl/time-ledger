@@ -7,4 +7,4 @@ variables:
   - name: token
     value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzY0MjAzMzEsInN1YiI6IjY1NTU3YTU2LTU0MDItNGVlZS04MWRkLTk1YjM2MWVlZWI0MyJ9.34YVGnjLyL1plCaE1yIgWWiUTW8PAHuOUfZd-LBOJt4
   - name: record_uuid
-    value: 2b129e3c-4d3b-4aa4-a6c4-19deb0304b50
+    value: cee28cf1-4e22-4985-a303-b62cb7c2d2ab

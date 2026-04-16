@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{localhost}}/api/v1/records?start_date=2026-04-01&end_date=2026-04-15&page=1&page_size=1"
+  url: "{{localhost}}/api/v1/records?start_date=2026-04-01&end_date=2026-04-15&page=1&page_size=10"
   headers:
     - name: Authorization
       value: "{{token}}"
@@ -20,7 +20,7 @@ http:
       value: "1"
       type: query
     - name: page_size
-      value: "1"
+      value: "10"
       type: query
   auth: inherit
 
