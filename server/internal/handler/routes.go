@@ -51,6 +51,7 @@ func registerV1Routes(r *gin.RouterGroup, categoryService *service.CategoryServi
 		records.GET("", recordHandler.ListRecords)
 		records.POST("", recordHandler.CreateRecord)
 		records.PUT("/:uuid", recordHandler.UpdateRecord)
+		records.DELETE("/:uuid", recordHandler.DeleteRecord)
 	}
 
 	// users := r.Group("/users")

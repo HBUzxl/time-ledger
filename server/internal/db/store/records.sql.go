@@ -40,6 +40,7 @@ FROM time_records tr
 WHERE tr.user_id = $1
 AND tr.start_time >= $2
 AND tr.start_time < $3
+AND tr.deleted_at IS NULL
 `
 
 type CountRecordsParams struct {
@@ -61,7 +62,7 @@ INSERT INTO time_records (
     user_id, category_id, start_time, end_time, duration_minutes, note, source
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at
+) RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, deleted_at, created_at, updated_at
 `
 
 type CreateRecordParams struct {
@@ -95,14 +96,18 @@ func (q *Queries) CreateRecord(ctx context.Context, arg CreateRecordParams) (Tim
 		&i.DurationMinutes,
 		&i.Note,
 		&i.Source,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const deleteRecord = `-- name: DeleteRecord :exec
-DELETE FROM time_records WHERE uuid = $1 AND user_id = $2
+const deleteRecord = `-- name: DeleteRecord :one
+UPDATE time_records
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE uuid = $1 AND user_id = $2 AND deleted_at IS NULL
+RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, deleted_at, created_at, updated_at
 `
 
 type DeleteRecordParams struct {
@@ -110,17 +115,33 @@ type DeleteRecordParams struct {
 	UserID int32     `json:"user_id"`
 }
 
-// 删除记录
-func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) error {
-	_, err := q.db.Exec(ctx, deleteRecord, arg.UUID, arg.UserID)
-	return err
+// 软删除记录
+func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) (TimeRecord, error) {
+	row := q.db.QueryRow(ctx, deleteRecord, arg.UUID, arg.UserID)
+	var i TimeRecord
+	err := row.Scan(
+		&i.ID,
+		&i.UUID,
+		&i.UserID,
+		&i.CategoryID,
+		&i.StartTime,
+		&i.EndTime,
+		&i.DurationMinutes,
+		&i.Note,
+		&i.Source,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getDailyRecords = `-- name: GetDailyRecords :many
-SELECT id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at FROM time_records
+SELECT id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, deleted_at, created_at, updated_at FROM time_records
 WHERE user_id = $1
 AND start_time >= $2
 AND start_time < $3
+AND deleted_at IS NULL
 ORDER BY start_time ASC
 `
 
@@ -150,6 +171,7 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 			&i.DurationMinutes,
 			&i.Note,
 			&i.Source,
+			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -164,10 +186,10 @@ func (q *Queries) GetDailyRecords(ctx context.Context, arg GetDailyRecordsParams
 }
 
 const getRecordByUUID = `-- name: GetRecordByUUID :one
-SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.created_at, tr.updated_at, c.uuid as category_uuid
+SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.deleted_at, tr.created_at, tr.updated_at, c.uuid as category_uuid
 FROM time_records tr
 LEFT JOIN categories c ON tr.category_id = c.id
-WHERE tr.uuid = $1 AND tr.user_id = $2
+WHERE tr.uuid = $1 AND tr.user_id = $2 AND tr.deleted_at IS NULL
 `
 
 type GetRecordByUUIDParams struct {
@@ -185,6 +207,7 @@ type GetRecordByUUIDRow struct {
 	DurationMinutes int32              `json:"duration_minutes"`
 	Note            pgtype.Text        `json:"note"`
 	Source          string             `json:"source"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	CategoryUuid    pgtype.UUID        `json:"category_uuid"`
@@ -204,6 +227,7 @@ func (q *Queries) GetRecordByUUID(ctx context.Context, arg GetRecordByUUIDParams
 		&i.DurationMinutes,
 		&i.Note,
 		&i.Source,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CategoryUuid,
@@ -212,12 +236,13 @@ func (q *Queries) GetRecordByUUID(ctx context.Context, arg GetRecordByUUIDParams
 }
 
 const getRecords = `-- name: GetRecords :many
-SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.created_at, tr.updated_at, c.uuid as category_uuid
+SELECT tr.id, tr.uuid, tr.user_id, tr.category_id, tr.start_time, tr.end_time, tr.duration_minutes, tr.note, tr.source, tr.deleted_at, tr.created_at, tr.updated_at, c.uuid as category_uuid
 FROM time_records tr
 LEFT JOIN categories c ON tr.category_id = c.id
 WHERE tr.user_id = $1
 AND tr.start_time >= $2
 AND tr.start_time < $3
+AND tr.deleted_at IS NULL
 ORDER BY tr.start_time DESC
 LIMIT $4 OFFSET $5
 `
@@ -240,6 +265,7 @@ type GetRecordsRow struct {
 	DurationMinutes int32              `json:"duration_minutes"`
 	Note            pgtype.Text        `json:"note"`
 	Source          string             `json:"source"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	CategoryUuid    pgtype.UUID        `json:"category_uuid"`
@@ -271,6 +297,7 @@ func (q *Queries) GetRecords(ctx context.Context, arg GetRecordsParams) ([]GetRe
 			&i.DurationMinutes,
 			&i.Note,
 			&i.Source,
+			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CategoryUuid,
@@ -289,7 +316,7 @@ const updateRecord = `-- name: UpdateRecord :one
 UPDATE time_records
 SET category_id = $2, start_time = $3, end_time = $4, duration_minutes = $5, note = $6, updated_at = NOW()
 WHERE uuid = $1 AND user_id = $7
-RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, created_at, updated_at
+RETURNING id, uuid, user_id, category_id, start_time, end_time, duration_minutes, note, source, deleted_at, created_at, updated_at
 `
 
 type UpdateRecordParams struct {
@@ -324,6 +351,7 @@ func (q *Queries) UpdateRecord(ctx context.Context, arg UpdateRecordParams) (Tim
 		&i.DurationMinutes,
 		&i.Note,
 		&i.Source,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

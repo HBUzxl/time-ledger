@@ -53,6 +53,7 @@ type TimeRecord struct {
 	DurationMinutes int32              `json:"duration_minutes"`
 	Note            pgtype.Text        `json:"note"`
 	Source          string             `json:"source"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }

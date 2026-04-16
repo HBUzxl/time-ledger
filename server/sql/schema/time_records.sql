@@ -12,6 +12,8 @@ CREATE TABLE time_records (
 
     source VARCHAR(255) NOT NULL DEFAULT 'manual', -- 记录来源，web、app、web、tg_bot 等
 
+    deleted_at TIMESTAMPTZ, -- 软删除标记
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 

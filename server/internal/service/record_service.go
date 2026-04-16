@@ -304,3 +304,38 @@ func (s *RecordService) UpdateRecord(ctx context.Context, userUUID string, recor
 
 	return ToRecordResponse(&record, originalCategoryUUID), nil
 }
+
+func (s *RecordService) DeleteRecord(ctx context.Context, userUUID string, recordUUID string) error {
+	parsedUserUUID, err := uuid.Parse(userUUID)
+	if err != nil {
+		return fmt.Errorf("invalid user UUID")
+	}
+	user, err := s.store.GetUserByUUID(ctx, parsedUserUUID)
+	if err != nil {
+		return fmt.Errorf("get user failed")
+	}
+	userID := user.ID
+
+	parsedRecordUUID, err := uuid.Parse(recordUUID)
+	if err != nil {
+		return fmt.Errorf("invalid record UUID")
+	}
+
+	_, err = s.store.GetRecordByUUID(ctx, store.GetRecordByUUIDParams{
+		UUID:   parsedRecordUUID,
+		UserID: userID,
+	})
+	if err != nil {
+		return fmt.Errorf("record not found")
+	}
+
+	_, err = s.store.DeleteRecord(ctx, store.DeleteRecordParams{
+		UUID:   parsedRecordUUID,
+		UserID: userID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete record: %w", err)
+	}
+
+	return nil
+}

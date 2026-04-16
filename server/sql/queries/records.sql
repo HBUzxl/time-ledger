@@ -19,6 +19,7 @@ SELECT * FROM time_records
 WHERE user_id = $1
 AND start_time >= $2
 AND start_time < $3
+AND deleted_at IS NULL
 ORDER BY start_time ASC;
 
 -- name: GetRecords :many
@@ -29,6 +30,7 @@ LEFT JOIN categories c ON tr.category_id = c.id
 WHERE tr.user_id = $1
 AND tr.start_time >= $2
 AND tr.start_time < $3
+AND tr.deleted_at IS NULL
 ORDER BY tr.start_time DESC
 LIMIT $4 OFFSET $5;
 
@@ -38,14 +40,15 @@ SELECT COUNT(*)
 FROM time_records tr
 WHERE tr.user_id = $1
 AND tr.start_time >= $2
-AND tr.start_time < $3;
+AND tr.start_time < $3
+AND tr.deleted_at IS NULL;
 
 -- name: GetRecordByUUID :one
 -- 根据UUID获取单条记录
 SELECT tr.*, c.uuid as category_uuid
 FROM time_records tr
 LEFT JOIN categories c ON tr.category_id = c.id
-WHERE tr.uuid = $1 AND tr.user_id = $2;
+WHERE tr.uuid = $1 AND tr.user_id = $2 AND tr.deleted_at IS NULL;
 
 -- name: UpdateRecord :one
 -- 更新记录
@@ -54,6 +57,9 @@ SET category_id = $2, start_time = $3, end_time = $4, duration_minutes = $5, not
 WHERE uuid = $1 AND user_id = $7
 RETURNING *;
 
--- name: DeleteRecord :exec
--- 删除记录
-DELETE FROM time_records WHERE uuid = $1 AND user_id = $2;
+-- name: DeleteRecord :one
+-- 软删除记录
+UPDATE time_records
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE uuid = $1 AND user_id = $2 AND deleted_at IS NULL
+RETURNING *;

@@ -112,3 +112,35 @@ func (h *RecordHandler) UpdateRecord(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, record)
 }
+
+// DeleteRecord 删除记录
+// DELETE /api/v1/records/:uuid
+func (h *RecordHandler) DeleteRecord(ctx *gin.Context) {
+	recordUUID := ctx.Param("uuid")
+	if recordUUID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "record uuid is required",
+		})
+		return
+	}
+
+	userUUID, exists := ctx.Get("user_uuid")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "user not authenticated",
+		})
+		return
+	}
+
+	err := h.service.DeleteRecord(ctx.Request.Context(), userUUID.(string), recordUUID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to delete record: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "record deleted successfully",
+	})
+}
