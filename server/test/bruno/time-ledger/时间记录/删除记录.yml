@@ -8,7 +8,7 @@ http:
   url: "{{localhost}}/api/v1/records/{{record_uuid}}"
   headers:
     - name: Authorization
-      value: "{{token}}"
+      value: Bearer {{token}}
   auth: inherit
 
 settings:

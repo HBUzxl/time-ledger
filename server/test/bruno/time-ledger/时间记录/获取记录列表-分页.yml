@@ -8,7 +8,7 @@ http:
   url: "{{localhost}}/api/v1/records?start_date=2026-04-01&end_date=2026-04-15&page=1&page_size=10"
   headers:
     - name: Authorization
-      value: "{{token}}"
+      value: Bearer {{token}}
   params:
     - name: start_date
       value: 2026-04-01

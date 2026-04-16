@@ -8,7 +8,7 @@ http:
   url: "{{localhost}}/api/v1/records"
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyMzM5NDUsInN1YiI6IjY1NTU3YTU2LTU0MDItNGVlZS04MWRkLTk1YjM2MWVlZWI0MyJ9.2dqrisKJo5Dbwn-sJbSuBn5jHab1J-cy3Vdmki-okVY
+      value: Bearer {{token}}
   body:
     type: json
     data: |-

@@ -8,7 +8,7 @@ http:
   url: "{{localhost}}/api/v1/categories/b8200cc8-b95a-4052-9153-038dae0b79f3"
   headers:
     - name: Authorization
-      value: "{{token}}"
+      value: Bearer {{token}}
   auth: inherit
 
 settings:
