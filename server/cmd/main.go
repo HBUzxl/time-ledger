@@ -47,9 +47,10 @@ func main() {
 	categoryService := service.NewCategoryService(queries)
 	userService := service.NewUserService(queries, config.JWTSecret, rdb)
 	recordService := service.NewRecordService(queries)
+	parseService := service.NewParseService(queries)
 
 	r := gin.Default()
-	handler.Setup(r, categoryService, userService, recordService, config.JWTSecret)
+	handler.Setup(r, categoryService, userService, recordService, parseService, config.JWTSecret)
 
 	r.Run(":" + config.ServerPort)
 }

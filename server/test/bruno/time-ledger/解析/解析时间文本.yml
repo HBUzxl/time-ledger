@@ -1,0 +1,26 @@
+info:
+  name: 解析时间文本
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{localhost}}/api/v1/parse"
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+  body:
+    type: json
+    data: |-
+      {
+        "raw_text": "10:00-11:30 读书 《1984》",
+        "timezone": "Asia/Shanghai",
+        "reference_date": "2026-04-16"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

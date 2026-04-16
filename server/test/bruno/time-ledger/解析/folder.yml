@@ -1,0 +1,7 @@
+info:
+  name: 解析
+  type: folder
+  seq: 6
+
+request:
+  auth: inherit
