@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"regexp"
+	"strings"
 	"time"
 
 	"time-ledger/internal/db/store"
@@ -28,7 +29,7 @@ type ParseResponseData struct {
 	EndTime         string        `json:"end_time"`
 	DurationMinutes int           `json:"duration_minutes"`
 	Note            string        `json:"note"`
-	MatchedCategory *CategoryInfo `json:"matched_category,omitempty"`
+	MatchedCategory *CategoryInfo `json:"matched_category"`
 	Confidence      float64       `json:"confidence"`
 	Warnings        []string      `json:"warnings"`
 }
@@ -160,7 +161,8 @@ func parseInt(s string) int {
 
 // extractNote 从文本中提取备注 (提取时间后面第一个连续的中文/英文/数字字符串)
 func extractNote(s string) string {
-	re := regexp.MustCompile(`^\s*[\p{Han}a-zA-Z0-9]+`)
+	s = strings.TrimSpace(s)
+	re := regexp.MustCompile(`^[\p{Han}a-zA-Z0-9]+`)
 	matches := re.FindStringSubmatch(s)
 	if len(matches) > 0 {
 		return matches[0]

@@ -13,7 +13,7 @@ http:
     type: json
     data: |-
       {
-        "raw_text": "10:00-11:30 读书 《1984》",
+        "raw_text": "10:10-11:30 阅读",
         "timezone": "Asia/Shanghai",
         "reference_date": "2026-04-16"
       }

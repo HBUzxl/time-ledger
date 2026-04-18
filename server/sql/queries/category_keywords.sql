@@ -16,7 +16,7 @@ LIMIT 1;
 -- name: SearchKeyword :many
 SELECT ck.* FROM category_keywords ck
 JOIN categories c ON ck.category_id = c.id
-WHERE ck.keyword = LOWER($1)
+WHERE ck.keyword LIKE CONCAT('%', LOWER($1), '%')
   AND ck.deleted_at IS NULL
   AND c.deleted_at IS NULL
   AND c.user_id = $2;

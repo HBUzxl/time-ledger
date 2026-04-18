@@ -112,7 +112,7 @@ func (q *Queries) ListKeywordsByCategoryID(ctx context.Context, categoryID int32
 const searchKeyword = `-- name: SearchKeyword :many
 SELECT ck.id, ck.uuid, ck.category_id, ck.keyword, ck.keyword_type, ck.created_at, ck.updated_at, ck.deleted_at FROM category_keywords ck
 JOIN categories c ON ck.category_id = c.id
-WHERE ck.keyword = LOWER($1)
+WHERE ck.keyword LIKE CONCAT('%', LOWER($1), '%')
   AND ck.deleted_at IS NULL
   AND c.deleted_at IS NULL
   AND c.user_id = $2
