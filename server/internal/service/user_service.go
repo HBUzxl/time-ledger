@@ -17,10 +17,11 @@ type UserService struct {
 	jwtSecret   string
 	redis       *redis.Client
 	categorySvc *CategoryService
+	keywordSvc  *KeywordService
 }
 
-func NewUserService(store *store.Queries, jwtSecret string, rdb *redis.Client, categorySvc *CategoryService) *UserService {
-	return &UserService{store: store, jwtSecret: jwtSecret, redis: rdb, categorySvc: categorySvc}
+func NewUserService(store *store.Queries, jwtSecret string, rdb *redis.Client, categorySvc *CategoryService, keywordSvc *KeywordService) *UserService {
+	return &UserService{store: store, jwtSecret: jwtSecret, redis: rdb, categorySvc: categorySvc, keywordSvc: keywordSvc}
 }
 
 type RegisterRequest struct {
@@ -71,7 +72,14 @@ func (s *UserService) Register(ctx context.Context, req *RegisterRequest) (*User
 		}
 	}
 
-	// 5. 生成 JWT 令牌
+	// 5. 创建默认关键词
+	if s.keywordSvc != nil {
+		if err := s.keywordSvc.CreateDefaultKeywords(ctx, user.ID); err != nil {
+			return nil, "", fmt.Errorf("create default keywords failed: %w", err)
+		}
+	}
+
+	// 6. 生成 JWT 令牌
 	at, rt, err := util.GenerateJWT(user.UUID, s.jwtSecret)
 	if err != nil {
 		return nil, "", err

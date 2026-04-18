@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time-ledger/internal/db/store"
 
 	"github.com/google/uuid"
@@ -149,4 +150,76 @@ func (s *KeywordService) SearchKeywordInUser(ctx context.Context, userUUID strin
 	}
 
 	return categories, nil
+}
+
+type defaultKeyword struct {
+	Keyword    string
+	CategoryID int32
+}
+
+func (s *KeywordService) CreateDefaultKeywords(ctx context.Context, userID int32) error {
+	categories, err := s.store.ListCategoriesByUserId(ctx, userID)
+	if err != nil || len(categories) == 0 {
+		return nil
+	}
+
+	categoryByName := make(map[string]int32)
+	for _, c := range categories {
+		categoryByName[c.Name] = c.ID
+	}
+
+	defaultKeywords := []defaultKeyword{
+		// 价值产出
+		{Keyword: "工作", CategoryID: categoryByName["核心事务"]},
+		{Keyword: "上班", CategoryID: categoryByName["核心事务"]},
+		{Keyword: "开会", CategoryID: categoryByName["核心事务"]},
+		{Keyword: "写代码", CategoryID: categoryByName["创造/研究"]},
+		{Keyword: "写文章", CategoryID: categoryByName["创造/研究"]},
+		{Keyword: "读书", CategoryID: categoryByName["专项深耕"]},
+		{Keyword: "学习", CategoryID: categoryByName["专项深耕"]},
+
+		// 自我提升
+		{Keyword: "看书", CategoryID: categoryByName["广度阅读"]},
+		{Keyword: "健身", CategoryID: categoryByName["身体管理"]},
+		{Keyword: "运动", CategoryID: categoryByName["身体管理"]},
+		{Keyword: "跑步", CategoryID: categoryByName["身体管理"]},
+		{Keyword: "冥想", CategoryID: categoryByName["身体管理"]},
+
+		// 基础生活
+		{Keyword: "睡觉", CategoryID: categoryByName["睡眠休整"]},
+		{Keyword: "午休", CategoryID: categoryByName["睡眠休整"]},
+		{Keyword: "休息", CategoryID: categoryByName["睡眠休整"]},
+		{Keyword: "吃饭", CategoryID: categoryByName["生理代谢"]},
+		{Keyword: "做饭", CategoryID: categoryByName["生理代谢"]},
+		{Keyword: "通勤", CategoryID: categoryByName["物理移位"]},
+		{Keyword: "打车", CategoryID: categoryByName["物理移位"]},
+
+		// 能量补给
+		{Keyword: "聊天", CategoryID: categoryByName["情感链接"]},
+		{Keyword: "聚会", CategoryID: categoryByName["情感链接"]},
+		{Keyword: "看剧", CategoryID: categoryByName["深度愉悦"]},
+		{Keyword: "看电影", CategoryID: categoryByName["深度愉悦"]},
+		{Keyword: "聚餐", CategoryID: categoryByName["深度愉悦"]},
+
+		// 系统损耗
+		{Keyword: "刷短视频", CategoryID: categoryByName["意志瘫痪"]},
+		{Keyword: "刷抖音", CategoryID: categoryByName["意志瘫痪"]},
+		{Keyword: "发呆", CategoryID: categoryByName["意志瘫痪"]},
+	}
+
+	for _, dk := range defaultKeywords {
+		if dk.CategoryID == 0 {
+			continue
+		}
+		_, err := s.store.CreateKeyword(ctx, store.CreateKeywordParams{
+			CategoryID:  dk.CategoryID,
+			Lower:       dk.Keyword,
+			KeywordType: pgtype.Text{String: "system", Valid: true},
+		})
+		if err != nil {
+			log.Printf("create default keyword %s failed: %v", dk.Keyword, err)
+			continue
+		}
+	}
+	return nil
 }
