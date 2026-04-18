@@ -119,6 +119,14 @@ const StatisticsView = () => {
     const weeklyData = mockStatistics.weekly.dailyBreakdown;
     const maxMinutes = Math.max(...weeklyData.map(d => d.minutes));
 
+    const categoryColors = {
+      Output: '#10b981',
+      Growth: '#f59e0b',
+      Basic: '#3b82f6',
+      Recharge: '#ec4899',
+      Drain: '#64748b',
+    };
+
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-6">Daily Breakdown</h3>
@@ -127,39 +135,45 @@ const StatisticsView = () => {
             <div key={i} className="flex-1 flex flex-col items-center gap-2">
               <div className="w-full flex flex-col-reverse h-40 rounded-lg overflow-hidden">
                 <div 
-                  className="w-full bg-violet-500 transition-all duration-300 hover:bg-violet-600"
-                  style={{ height: `${(day.rest / maxMinutes) * 100}%` }}
-                  title={`Rest: ${formatDuration(day.rest)}`}
+                  className="w-full transition-all duration-300 hover:opacity-80"
+                  style={{ height: `${(day.Basic / maxMinutes) * 100}%`, backgroundColor: categoryColors.Basic }}
+                  title={`基础生活: ${formatDuration(day.Basic)}`}
                 />
                 <div 
-                  className="w-full bg-emerald-500 transition-all duration-300 hover:bg-emerald-600"
-                  style={{ height: `${(day.work / maxMinutes) * 100}%` }}
-                  title={`Work: ${formatDuration(day.work)}`}
+                  className="w-full transition-all duration-300 hover:opacity-80"
+                  style={{ height: `${(day.Output / maxMinutes) * 100}%`, backgroundColor: categoryColors.Output }}
+                  title={`价值产出: ${formatDuration(day.Output)}`}
                 />
                 <div 
-                  className="w-full bg-orange-500 transition-all duration-300 hover:bg-orange-600"
-                  style={{ height: `${(day.learning / maxMinutes) * 100}%` }}
-                  title={`Learning: ${formatDuration(day.learning)}`}
+                  className="w-full transition-all duration-300 hover:opacity-80"
+                  style={{ height: `${(day.Growth / maxMinutes) * 100}%`, backgroundColor: categoryColors.Growth }}
+                  title={`自我提升: ${formatDuration(day.Growth)}`}
                 />
                 <div 
-                  className="w-full bg-blue-500 transition-all duration-300 hover:bg-blue-600"
-                  style={{ height: `${(day.life / maxMinutes) * 100}%` }}
-                  title={`Life: ${formatDuration(day.life)}`}
+                  className="w-full transition-all duration-300 hover:opacity-80"
+                  style={{ height: `${(day.Recharge / maxMinutes) * 100}%`, backgroundColor: categoryColors.Recharge }}
+                  title={`能量补给: ${formatDuration(day.Recharge)}`}
+                />
+                <div 
+                  className="w-full transition-all duration-300 hover:opacity-80"
+                  style={{ height: `${(day.Drain / maxMinutes) * 100}%`, backgroundColor: categoryColors.Drain }}
+                  title={`系统损耗: ${formatDuration(day.Drain)}`}
                 />
               </div>
               <span className="text-xs text-slate-500">{day.day}</span>
             </div>
           ))}
         </div>
-        <div className="flex justify-center gap-6 mt-6">
+        <div className="flex justify-center gap-6 mt-6 flex-wrap">
           {[
-            { label: 'Work', color: 'bg-emerald-500' },
-            { label: 'Learning', color: 'bg-orange-500' },
-            { label: 'Life', color: 'bg-blue-500' },
-            { label: 'Rest', color: 'bg-violet-500' },
+            { label: '基础生活', color: '#3b82f6' },
+            { label: '价值产出', color: '#10b981' },
+            { label: '自我提升', color: '#f59e0b' },
+            { label: '能量补给', color: '#ec4899' },
+            { label: '系统损耗', color: '#64748b' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${item.color}`} />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
               <span className="text-xs text-slate-600">{item.label}</span>
             </div>
           ))}
@@ -171,16 +185,23 @@ const StatisticsView = () => {
   const renderLineChart = () => {
     const trends = mockStatistics.categoryTrends;
     
+    const categoryConfig = {
+      Output: { label: '价值产出', color: '#10b981' },
+      Growth: { label: '自我提升', color: '#f59e0b' },
+      Basic: { label: '基础生活', color: '#3b82f6' },
+      Recharge: { label: '能量补给', color: '#ec4899' },
+      Drain: { label: '系统损耗', color: '#64748b' },
+    };
+
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-6">Trend Analysis</h3>
         <div className="h-48 relative">
           <svg className="w-full h-full overflow-visible">
-            {['Work', 'Learning', 'Life', 'Rest'].map((category, idx) => {
-              const colors = { Work: '#10b981', Learning: '#f97316', Life: '#3b82f6', Rest: '#8b5cf6' };
+            {Object.entries(categoryConfig).map(([category, config]) => {
               const points = trends.map((d, i) => {
                 const x = (i / (trends.length - 1)) * 100;
-                const y = 100 - (d[category] / 600) * 100;
+                const y = 100 - (d[category] || 0 / 600) * 100;
                 return `${x},${y}`;
               }).join(' ');
               
@@ -188,7 +209,7 @@ const StatisticsView = () => {
                 <g key={category}>
                   <polyline
                     fill="none"
-                    stroke={colors[category]}
+                    stroke={config.color}
                     strokeWidth="2"
                     points={points}
                     strokeLinecap="round"
@@ -199,9 +220,9 @@ const StatisticsView = () => {
                     <circle
                       key={i}
                       cx={(i / (trends.length - 1)) * 100}
-                      cy={100 - (d[category] / 600) * 100}
+                      cy={100 - ((d[category] || 0) / 600) * 100}
                       r="3"
-                      fill={colors[category]}
+                      fill={config.color}
                       stroke="white"
                       strokeWidth="1"
                       className="opacity-0 hover:opacity-100 transition-opacity"
@@ -216,16 +237,11 @@ const StatisticsView = () => {
             <span className="text-xs text-slate-400">{formatShortDate(trends[trends.length - 1].date)}</span>
           </div>
         </div>
-        <div className="flex justify-center gap-6 mt-4">
-          {[
-            { label: 'Work', color: '#10b981' },
-            { label: 'Learning', color: '#f97316' },
-            { label: 'Life', color: '#3b82f6' },
-            { label: 'Rest', color: '#8b5cf6' },
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-              <span className="text-xs text-slate-600">{item.label}</span>
+        <div className="flex justify-center gap-6 mt-4 flex-wrap">
+          {Object.entries(categoryConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
+              <span className="text-xs text-slate-600">{config.label}</span>
             </div>
           ))}
         </div>
