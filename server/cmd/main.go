@@ -45,7 +45,7 @@ func main() {
 
 	// 初始化 services
 	categoryService := service.NewCategoryService(queries)
-	userService := service.NewUserService(queries, config.JWTSecret, rdb)
+	userService := service.NewUserService(queries, config.JWTSecret, rdb, categoryService)
 	recordService := service.NewRecordService(queries)
 	keywordService := service.NewKeywordService(queries)
 	parseService := service.NewParseService(queries, keywordService)

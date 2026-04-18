@@ -277,3 +277,101 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, userUUID string, c
 
 	return nil
 }
+
+type defaultCategory struct {
+	Name      string
+	ColorCode string
+	SortOrder int32
+	IsParent  bool // 是否是父分类
+}
+
+var defaultCategories = []defaultCategory{
+	// 第一类：价值产出 (Output)
+	{Name: "价值产出", ColorCode: "#4CAF50", SortOrder: 1, IsParent: true},
+	{Name: "核心事务", ColorCode: "#4CAF50", SortOrder: 2, IsParent: false},
+	{Name: "创造/研究", ColorCode: "#8BC34A", SortOrder: 3, IsParent: false},
+	{Name: "专项深耕", ColorCode: "#009688", SortOrder: 4, IsParent: false},
+
+	// 第二类：自我提升 (Growth)
+	{Name: "自我提升", ColorCode: "#2196F3", SortOrder: 5, IsParent: true},
+	{Name: "广度阅读", ColorCode: "#2196F3", SortOrder: 6, IsParent: false},
+	{Name: "身体管理", ColorCode: "#03A9F4", SortOrder: 7, IsParent: false},
+	{Name: "技能探索", ColorCode: "#00BCD4", SortOrder: 8, IsParent: false},
+
+	// 第三类：基础生活 (Basic)
+	{Name: "基础生活", ColorCode: "#9C27B0", SortOrder: 9, IsParent: true},
+	{Name: "睡眠休整", ColorCode: "#9C27B0", SortOrder: 10, IsParent: false},
+	{Name: "生理代谢", ColorCode: "#673AB7", SortOrder: 11, IsParent: false},
+	{Name: "物理移位", ColorCode: "#795548", SortOrder: 12, IsParent: false},
+
+	// 第四类：能量补给 (Recharge)
+	{Name: "能量补给", ColorCode: "#FF9800", SortOrder: 13, IsParent: true},
+	{Name: "情感链接", ColorCode: "#FF9800", SortOrder: 14, IsParent: false},
+	{Name: "深度愉悦", ColorCode: "#FF5722", SortOrder: 15, IsParent: false},
+
+	// 第五类：系统损耗 (Drain)
+	{Name: "系统损耗", ColorCode: "#F44336", SortOrder: 16, IsParent: true},
+	{Name: "意志瘫痪", ColorCode: "#F44336", SortOrder: 17, IsParent: false},
+	{Name: "外界干扰", ColorCode: "#E91E63", SortOrder: 18, IsParent: false},
+	{Name: "未知余数", ColorCode: "#607D8B", SortOrder: 19, IsParent: false},
+}
+
+func (s *CategoryService) CreateDefaultCategories(ctx context.Context, userID int32) error {
+	existing, err := s.store.ListCategoriesByUserId(ctx, userID)
+	if err == nil && len(existing) > 0 {
+		return nil
+	}
+
+	parentIDMap := make(map[string]int32)
+
+	for _, dc := range defaultCategories {
+		var parentID pgtype.Int4
+
+		if dc.IsParent {
+			// 父分类，不需要设置ParentID
+			parentID = pgtype.Int4{Valid: false}
+		} else {
+			// 子分类，查找父分类的ID
+			parentName := getParentCategoryName(dc.Name)
+			if pid, ok := parentIDMap[parentName]; ok {
+				parentID = pgtype.Int4{Int32: pid, Valid: true}
+			} else {
+				parentID = pgtype.Int4{Valid: false}
+			}
+		}
+
+		category, err := s.store.CreateCategory(ctx, store.CreateCategoryParams{
+			UserID:    userID,
+			ParentID:  parentID,
+			Name:      dc.Name,
+			ColorCode: dc.ColorCode,
+			SortOrder: dc.SortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("create default category %s failed: %w", dc.Name, err)
+		}
+
+		// 记录父分类的ID
+		if dc.IsParent {
+			parentIDMap[dc.Name] = category.ID
+		}
+	}
+	return nil
+}
+
+func getParentCategoryName(childName string) string {
+	switch childName {
+	case "核心事务", "创造/研究", "专项深耕":
+		return "价值产出"
+	case "广度阅读", "身体管理", "技能探索":
+		return "自我提升"
+	case "睡眠休整", "生理代谢", "物理移位":
+		return "基础生活"
+	case "情感链接", "深度愉悦":
+		return "能量补给"
+	case "意志瘫痪", "外界干扰", "未知余数":
+		return "系统损耗"
+	default:
+		return ""
+	}
+}
