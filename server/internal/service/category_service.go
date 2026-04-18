@@ -133,12 +133,12 @@ func (s *CategoryService) CreateCategory(ctx context.Context, userUUID string, r
 }
 
 type UpdateCategoryRequest struct {
-	Name         *string    `json:"name"`
-	ColorCode    *string    `json:"color_code"`
-	IsActive     *bool      `json:"is_active"`
-	SortOrder    *int32     `json:"sort_order"`
-	ParentUUID   *uuid.UUID `json:"parent_id"`            // 可选，默认为 nil（不更新）
-	ClearParent *bool      `json:"clear_parent_id"`      // 是否清空父分类
+	Name        *string    `json:"name"`
+	ColorCode   *string    `json:"color_code"`
+	IsActive    *bool      `json:"is_active"`
+	SortOrder   *int32     `json:"sort_order"`
+	ParentUUID  *uuid.UUID `json:"parent_id"`       // 可选，默认为 nil（不更新）
+	ClearParent *bool      `json:"clear_parent_id"` // 是否清空父分类
 }
 
 // UpdateCategory 更新分类

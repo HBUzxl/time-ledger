@@ -23,6 +23,17 @@ type Category struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type CategoryKeyword struct {
+	ID          int32              `json:"id"`
+	UUID        uuid.UUID          `json:"uuid"`
+	CategoryID  int32              `json:"category_id"`
+	Keyword     string             `json:"keyword"`
+	KeywordType pgtype.Text        `json:"keyword_type"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type RawMessage struct {
 	ID           int32              `json:"id"`
 	UserID       int32              `json:"user_id"`

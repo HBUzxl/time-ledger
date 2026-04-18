@@ -19,7 +19,8 @@ type ParseRequest struct {
 type CategoryInfo struct {
 	UUID       string `json:"uuid"`
 	Name       string `json:"name"`
-	ParentName string `json:"parent_name"`
+	ParentUUID string `json:"parent_uuid,omitempty"`
+	ParentName string `json:"parent_name,omitempty"`
 }
 
 type ParseResponseData struct {
@@ -39,17 +40,18 @@ type ParseResponse struct {
 }
 
 type ParseService struct {
-	store *store.Queries
+	store      *store.Queries
+	keywordSvc *KeywordService
 }
 
-func NewParseService(store *store.Queries) *ParseService {
-	return &ParseService{store: store}
+func NewParseService(store *store.Queries, keywordSvc *KeywordService) *ParseService {
+	return &ParseService{store: store, keywordSvc: keywordSvc}
 }
 
 // Parse 解析文本，提取时间、时长、备注等信息，并尝试匹配用户分类
 // 输入示例: "10:00-11:30 读书 《1984》", timezone: "Asia/Shanghai", reference_date: "2026-04-16"
 func (s *ParseService) Parse(ctx context.Context, userUUID string, req ParseRequest) (ParseResponse, error) {
-	// 1. 根据用户UUID获取用户信息
+	// 1. 根据用户UUID获取用户信息（用于后续权限验证和分类查询）
 	parsedUUID, err := uuid.Parse(userUUID)
 	if err != nil {
 		return ParseResponse{}, err
@@ -112,12 +114,10 @@ func (s *ParseService) Parse(ctx context.Context, userUUID string, req ParseRequ
 	rawTextAfterTime := timePattern.ReplaceAllString(req.RawText, "")
 	note := extractNote(rawTextAfterTime)
 
-	// 11. 尝试匹配用户分类 (根据备注匹配)
-	categories, err := s.store.ListCategoriesByUserId(ctx, user.ID)
-	matchedCategory := matchCategory(categories, note)
+	// 11. 尝试匹配用户分类 (优先关键词匹配，其次名称匹配)
+	matchedCategory := s.matchCategoryByKeywordOrName(ctx, userUUID, user.ID, note)
 
 	// 12. 匹配到分类时置信度较高，否则使用默认置信度
-	// (简易实现)
 	var confidence float64 = 0.5
 	if matchedCategory != nil {
 		confidence = 0.95
@@ -168,40 +168,6 @@ func extractNote(s string) string {
 	return ""
 }
 
-// matchCategory 根据备注匹配用户分类
-// 优先精确匹配，其次模糊匹配(包含关系)
-func matchCategory(categories []store.Category, note string) *CategoryInfo {
-	if note == "" {
-		return nil
-	}
-
-	for _, c := range categories {
-		if c.Name == note {
-			return &CategoryInfo{
-				UUID:       c.UUID.String(),
-				Name:       c.Name,
-				ParentName: "",
-			}
-		}
-	}
-
-	for _, c := range categories {
-		if len(c.Name) >= 2 && len(note) >= 2 && (contains(c.Name, note) || contains(note, c.Name)) {
-			var parentName string
-			if c.ParentID.Valid {
-				parentName = "父分类"
-			}
-			return &CategoryInfo{
-				UUID:       c.UUID.String(),
-				Name:       c.Name,
-				ParentName: parentName,
-			}
-		}
-	}
-
-	return nil
-}
-
 // contains 检查字符串s是否包含子串sub
 func contains(s, sub string) bool {
 	for i := 0; i <= len(s)-len(sub); i++ {
@@ -210,4 +176,58 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// buildCategoryInfo 构建分类信息，包含父分类名称
+func (s *ParseService) buildCategoryInfo(ctx context.Context, c store.Category) *CategoryInfo {
+	info := &CategoryInfo{
+		UUID: c.UUID.String(),
+		Name: c.Name,
+	}
+
+	if c.ParentID.Valid {
+		parent, err := s.store.GetCategoryByID(ctx, c.ParentID.Int32)
+		if err == nil {
+			info.ParentUUID = parent.UUID.String()
+			info.ParentName = parent.Name
+		}
+	}
+
+	return info
+}
+
+// matchCategoryByKeywordOrName 优先关键词匹配，其次名称匹配
+// userID 在 Parse 方法中已查询，直接传入避免重复查询
+func (s *ParseService) matchCategoryByKeywordOrName(ctx context.Context, userUUID string, userID int32, note string) *CategoryInfo {
+	if note == "" {
+		return nil
+	}
+
+	// 第1步：关键词匹配
+	if s.keywordSvc != nil {
+		categories, err := s.keywordSvc.SearchKeywordInUser(ctx, userUUID, note)
+		if err == nil && len(categories) > 0 {
+			return s.buildCategoryInfo(ctx, categories[0])
+		}
+	}
+
+	// 第2步：名称匹配（原有逻辑）
+	categories, err := s.store.ListCategoriesByUserId(ctx, userID)
+	if err != nil {
+		return nil
+	}
+
+	for _, c := range categories {
+		if c.Name == note {
+			return s.buildCategoryInfo(ctx, c)
+		}
+	}
+
+	for _, c := range categories {
+		if len(c.Name) >= 2 && len(note) >= 2 && (contains(c.Name, note) || contains(note, c.Name)) {
+			return s.buildCategoryInfo(ctx, c)
+		}
+	}
+
+	return nil
 }

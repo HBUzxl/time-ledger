@@ -42,3 +42,8 @@ SELECT COUNT(*) FROM categories
 WHERE parent_id = sqlc.arg('parent_id')
   AND user_id = sqlc.arg('user_id')
   AND deleted_at IS NULL;
+
+-- name: GetCategoriesByIDs :many
+SELECT * FROM categories
+WHERE id = ANY($1::int[])
+  AND deleted_at IS NULL;

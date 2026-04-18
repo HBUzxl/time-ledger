@@ -47,7 +47,8 @@ func main() {
 	categoryService := service.NewCategoryService(queries)
 	userService := service.NewUserService(queries, config.JWTSecret, rdb)
 	recordService := service.NewRecordService(queries)
-	parseService := service.NewParseService(queries)
+	keywordService := service.NewKeywordService(queries)
+	parseService := service.NewParseService(queries, keywordService)
 
 	r := gin.Default()
 	handler.Setup(r, categoryService, userService, recordService, parseService, config.JWTSecret)
